@@ -1,0 +1,448 @@
+openapi: 3.0.0
+info:
+  title: Booking API
+  description: API Documentation for the SaaS Booking Platform
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: JWT access token
+
+paths:
+  # ---------------------------------------------------------
+  # AUTHENTICATION & ORGANIZATIONS
+  # ---------------------------------------------------------
+  /auth/orgs:
+    post:
+      tags: [Auth & Orgs]
+      summary: Register a new Organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                slug: { type: string }
+                timezone: { type: string }
+                plan: { type: string, enum: [free, pro, enterprise] }
+      responses:
+        201:
+          description: Successfully Created Organization
+
+  /auth/orgs/{orgId}/customers:
+    post:
+      tags: [Auth & Orgs]
+      summary: Register a new Customer
+      parameters:
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                passwordHash: { type: string }
+      responses:
+        201:
+          description: Registration Successful
+
+  /auth/orgs/{orgId}/staff:
+    post:
+      tags: [Auth & Orgs]
+      summary: Register a new Staff Member (Owner Only)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                passwordHash: { type: string }
+                role: { type: string, enum: [staff, owner] }
+      responses:
+        201:
+          description: Registration Successful
+
+  /auth/login:
+    post:
+      tags: [Auth & Orgs]
+      summary: Login to get access token (cookie)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                passwordHash: { type: string }
+      responses:
+        200:
+          description: logged in...
+
+  /auth/refresh:
+    post:
+      tags: [Auth & Orgs]
+      summary: Refresh Access Token
+      responses:
+        200:
+          description: Token refreshed successfully
+
+  /auth/logout:
+    post:
+      tags: [Auth & Orgs]
+      summary: Logout
+      responses:
+        200:
+          description: Logged out successfully
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth & Orgs]
+      summary: Request password reset link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+      responses:
+        200:
+          description: Link sent
+
+  /auth/reset-password:
+    post:
+      tags: [Auth & Orgs]
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+                password: { type: string }
+      responses:
+        200:
+          description: Password reset successfully
+
+  # ---------------------------------------------------------
+  # SERVICES
+  # ---------------------------------------------------------
+  /service:
+    get:
+      tags: [Services]
+      summary: Get all services for current Org
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Fetched Successfully
+
+  /service/create:
+    post:
+      tags: [Services]
+      summary: Create a new service (Owner only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                durationMinutes: { type: integer }
+                price: { type: number }
+                description: { type: string }
+      responses:
+        201:
+          description: Service Created
+
+  /service/{name}:
+    put:
+      tags: [Services]
+      summary: Update a service
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Updated successfully
+    delete:
+      tags: [Services]
+      summary: Delete a service
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Deleted successfully
+
+  # ---------------------------------------------------------
+  # AVAILABILITY
+  # ---------------------------------------------------------
+  /availiability:
+    post:
+      tags: [Availability]
+      summary: Set Staff Availability Rules
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        201:
+          description: Added
+
+  /availiability/slots:
+    get:
+      tags: [Availability]
+      summary: Get available slots
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: staffId
+          schema: { type: string }
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+      responses:
+        200:
+          description: Slots fetched
+
+  /availiability/generate-slots:
+    post:
+      tags: [Availability]
+      summary: Generate Slots
+      security:
+        - cookieAuth: []
+      responses:
+        201:
+          description: Generated
+
+  /availiability/{staffId}:
+    get:
+      tags: [Availability]
+      summary: Get Availability rules for staff
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Rules fetched
+    patch:
+      tags: [Availability]
+      summary: Update Availability rules for staff
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Rules updated
+    delete:
+      tags: [Availability]
+      summary: Delete Availability rules for staff
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Rules deleted
+
+  # ---------------------------------------------------------
+  # BOOKINGS
+  # ---------------------------------------------------------
+  /booking:
+    post:
+      tags: [Bookings]
+      summary: Create internal booking
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        201:
+          description: Booking Successful
+    get:
+      tags: [Bookings]
+      summary: Get bookings
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: List of bookings
+
+  /booking/{id}:
+    delete:
+      tags: [Bookings]
+      summary: Delete a booking
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Deleted
+
+  /booking/{id}/status:
+    patch:
+      tags: [Bookings]
+      summary: Update booking status
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+      responses:
+        200:
+          description: Updated
+
+  # ---------------------------------------------------------
+  # CHECKOUT (STRIPE)
+  # ---------------------------------------------------------
+  /checkout/session:
+    post:
+      tags: [Checkout]
+      summary: Create a Stripe checkout session (Locks slot)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                serviceId: { type: string }
+                staffId: { type: string }
+                slotId: { type: string }
+                startAt: { type: string }
+                date: { type: string }
+      responses:
+        200:
+          description: Returns Stripe URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+
+  /checkout/confirm:
+    get:
+      tags: [Checkout]
+      summary: Confirm a checkout session after payment success or for free bookings
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: session_id
+          required: false
+          schema: { type: string }
+      responses:
+        200:
+          description: Booking confirmed successfully
+        400:
+          description: Bad request or session not found
+
+  /checkout/webhook:
+    post:
+      tags: [Checkout]
+      summary: Webhook for Stripe events (DO NOT CALL DIRECTLY)
+      responses:
+        200:
+          description: Received
+
+  # ---------------------------------------------------------
+  # STATS
+  # ---------------------------------------------------------
+  /stats:
+    get:
+      tags: [Stats]
+      summary: Get full analytics dashboard stats
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Returns aggregate data
+
+  /stats/advanced:
+    get:
+      tags: [Stats]
+      summary: Get advanced analytics and performance metrics
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Returns revenue and booking comparisons

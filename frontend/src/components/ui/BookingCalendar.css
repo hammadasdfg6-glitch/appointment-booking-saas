@@ -1,0 +1,247 @@
+.booking-calendar-wrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .booking-calendar-wrapper {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+.calendar-section {
+  flex: 1;
+  padding: 1.5rem;
+  min-width: 320px;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--foreground);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.calendar-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.calendar-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.calendar-month-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.calendar-day-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.calendar-day-btn {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground);
+  border-radius: 50%;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.calendar-day-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.1);
+}
+
+.calendar-day-btn.is-today {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.calendar-day-btn.is-today::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.calendar-day-btn.is-selected {
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+  transform: scale(1.05);
+}
+
+.calendar-day-btn.is-selected::after {
+  display: none;
+}
+
+.calendar-day-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* Time Slots Section */
+.time-slots-section {
+  flex: 1;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .time-slots-section {
+    border-top: none;
+    border-left: 1px solid var(--border);
+    max-width: 320px;
+  }
+}
+
+.time-slots-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-slots-header svg {
+  color: var(--accent);
+}
+
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Custom Scrollbar for Time Slots */
+.time-slots-grid::-webkit-scrollbar {
+  width: 6px;
+}
+.time-slots-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+.time-slots-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+.time-slots-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.time-slot-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--foreground);
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Animation variables applied via inline styles in JS */
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.time-slot-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.time-slot-btn.is-selected {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Empty State */
+.empty-slots-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  padding: 2rem 0;
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.empty-slots-msg svg {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Animations */
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-content {
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

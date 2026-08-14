@@ -1,0 +1,79 @@
+/* book.css */
+.booking-header {
+  margin-bottom: 2rem;
+}
+
+.booking-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.booking-header p {
+  opacity: 0.7;
+}
+
+.booking-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  max-width: 800px;
+}
+
+.step-section h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.option-card {
+  background-color: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-card.selected {
+  border-color: var(--accent);
+  background-color: rgba(255, 215, 0, 0.05); /* very light yellow */
+}
+
+.option-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.svc-meta {
+  display: flex;
+  justify-content: space-between;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.svc-meta .price {
+  font-weight: bold;
+  color: var(--accent);
+}
+
+
+
+.booking-action {
+  margin-top: 2rem;
+  text-align: right;
+}
+
+.confirm-book-btn {
+  background-color: var(--accent);
+  color: #000;
+  padding: 1rem 3rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: 8px;
+}
