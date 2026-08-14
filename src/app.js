@@ -49,6 +49,9 @@ app.use("/availiability",availRouter)
 app.use("/booking", bookingRouter)
 app.use("/checkout", checkoutRouter)
 app.use("/stats",statsRouter)
+app.use("/health",(req,res) => {
+  return res.status(200).json({success: true, message: "Health Route is working"})
+})
 
 app.use("/*splat", (req, res, next) => {
   const error = new Error("Path Not Found!")
@@ -57,9 +60,6 @@ app.use("/*splat", (req, res, next) => {
   next(error);
 });
 
-app.use("/health",(req,res) => {
-  return res.status(200).json({success: true, message: "Health Route is working"})
-})
 
 app.use(errorHandler)
 
