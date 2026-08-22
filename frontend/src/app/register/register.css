@@ -1,58 +1,60 @@
 /* ================================
-   Login Page
+   Register Page
 ================================ */
 
-.login-container {
+.register-container {
+  min-height: calc(100vh - 70px);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 70px);
   padding: 2rem 1rem;
-  background-color: var(--background);
 }
 
-.login-card {
-  background-color: var(--card-bg);
-  padding: 2.5rem;
-  border-radius: 16px;
+.register-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 500px;
+  padding: 2.5rem;
+  background: var(--card-bg);
   border: 1px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
 
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 
-  animation: loginCardIn 0.6s ease-out;
+  animation: registerCardIn 0.6s ease-out;
 }
 
-.login-title {
+.register-title {
+  color: var(--accent);
+  margin-bottom: 0.5rem;
   font-size: 2rem;
   font-weight: 700;
-  color: var(--accent);
-  text-align: center;
-  margin-bottom: 0.5rem;
 }
 
-.login-subtitle {
-  text-align: center;
+.register-subtitle {
   color: var(--foreground);
   opacity: 0.7;
   margin-bottom: 2rem;
   font-size: 0.9rem;
-  line-height: 1.5;
 }
 
-.login-form {
+.register-form {
   display: flex;
   flex-direction: column;
+  gap: 1.25rem;
+}
+
+.register-row {
+  display: flex;
   gap: 1rem;
 }
 
-.login-input {
+.register-input {
   width: 100%;
   padding: 0.875rem 1rem;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background-color: var(--background);
+  background: var(--background);
   color: var(--foreground);
   font-size: 1rem;
   outline: none;
@@ -63,21 +65,21 @@
     transform 0.25s ease;
 }
 
-.login-input:focus {
+.register-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
   transform: translateY(-1px);
 }
 
-.login-button {
+.register-button {
   width: 100%;
-  background-color: var(--accent);
-  color: #000;
+  background: var(--accent);
+  color: #111;
   padding: 1rem;
   border-radius: 8px;
-  font-weight: bold;
   font-size: 1rem;
-  margin-top: 1rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
 
   transition:
     transform 0.2s ease,
@@ -85,49 +87,47 @@
     box-shadow 0.2s ease;
 }
 
-.login-button:hover {
-  background-color: var(--accent-hover);
+.register-button:hover:not(:disabled) {
+  background: var(--accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
-.login-button:active {
-  transform: translateY(0);
+.register-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.login-toggle {
+.register-login {
   margin-top: 2rem;
-  text-align: center;
-  font-size: 0.9rem;
   color: var(--foreground);
+  opacity: 0.8;
+  font-size: 0.9rem;
 }
 
-.login-toggle-btn {
+.register-link {
   color: var(--accent);
-  font-weight: bold;
-  transition: opacity 0.2s ease;
+  font-weight: 700;
 }
 
-.login-toggle-btn:hover {
+.register-link:hover {
   opacity: 0.75;
 }
 
-.login-error {
-  background-color: #ffcccc;
-  color: #cc0000;
+.register-error {
+  color: #ff4444;
+  margin-bottom: 1rem;
+  background: rgba(255, 68, 68, 0.1);
   padding: 0.75rem;
   border-radius: 8px;
-  margin-bottom: 1rem;
-  text-align: center;
   font-size: 0.9rem;
-  line-height: 1.4;
 }
 
 /* ================================
    Animation
 ================================ */
 
-@keyframes loginCardIn {
+@keyframes registerCardIn {
   from {
     opacity: 0;
     transform: translateY(25px) scale(0.98);
@@ -140,59 +140,44 @@
 }
 
 /* ================================
-   Tablet
-================================ */
-
-@media (max-width: 768px) {
-  .login-container {
-    padding: 2rem 1.5rem;
-  }
-
-  .login-card {
-    max-width: 420px;
-    padding: 2rem;
-  }
-}
-
-/* ================================
    Mobile
 ================================ */
 
-@media (max-width: 480px) {
-  .login-container {
-    min-height: calc(100vh - 60px);
+@media (max-width: 600px) {
+  .register-container {
     padding: 1.5rem 1rem;
   }
 
-  .login-card {
+  .register-card {
     padding: 1.5rem;
     border-radius: 14px;
   }
 
-  .login-title {
+  .register-title {
     font-size: 1.7rem;
   }
 
-  .login-subtitle {
+  .register-subtitle {
     font-size: 0.85rem;
     margin-bottom: 1.5rem;
   }
 
-  .login-input {
-    padding: 0.8rem;
-    font-size: 0.95rem;
+  .register-row {
+    flex-direction: column;
+    gap: 1.25rem;
   }
 
-  .login-button {
+  .register-input {
+    font-size: 0.95rem;
+    padding: 0.8rem;
+  }
+
+  .register-button {
     padding: 0.85rem;
   }
 
-  .login-toggle {
+  .register-login {
     margin-top: 1.5rem;
-    font-size: 0.85rem;
-  }
-
-  .login-error {
     font-size: 0.85rem;
   }
 }

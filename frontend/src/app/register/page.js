@@ -1,25 +1,32 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/utils/api';
-import Link from 'next/link';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/utils/api";
+import Link from "next/link";
+import "./register.css";
 
 export default function RegisterOrgPage() {
   const router = useRouter();
+
   const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    ownerName: '',
-    ownerEmail: '',
-    password: ''
+    name: "",
+    slug: "",
+    ownerName: "",
+    ownerEmail: "",
+    password: "",
   });
+
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -28,46 +35,42 @@ export default function RegisterOrgPage() {
     setLoading(true);
 
     try {
-      const data = await apiFetch('/api/auth/orgs', {
-        method: 'POST',
-        body: JSON.stringify(formData)
+      const data = await apiFetch("/api/auth/orgs", {
+        method: "POST",
+        body: JSON.stringify(formData),
       });
-      
+
       if (data.success) {
-        // Direct to admin dashboard as they are now an owner
-        router.push('/dashboard/admin');
+        router.push("/dashboard/admin");
       }
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fade-in" style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '80vh' 
-    }}>
-      <div className="auth-card" style={{
-        background: '#1a1a1a',
-        padding: '3rem',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        width: '100%',
-        maxWidth: '500px',
-        textAlign: 'center'
-      }}>
-        <h1 style={{ color: '#FFD700', marginBottom: '0.5rem', fontSize: '2rem' }}>Get Started</h1>
-        <p style={{ color: '#a1a1aa', marginBottom: '2rem' }}>Create your organization and admin account.</p>
+    <div className="register-container fade-in">
+      <div className="register-card">
 
-        {error && <div style={{ color: '#ff4444', marginBottom: '1rem', background: 'rgba(255, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{error}</div>}
+        <h1 className="register-title">
+          Get Started
+        </h1>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+        <p className="register-subtitle">
+          Create your organization and admin account.
+        </p>
+
+        {error && (
+          <div className="register-error">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="register-form">
+
+          <div className="register-row">
             <input
               type="text"
               name="name"
@@ -75,8 +78,9 @@ export default function RegisterOrgPage() {
               value={formData.name}
               onChange={handleChange}
               required
-              style={{ flex: 1, padding: '0.875rem', borderRadius: '8px', border: '1px solid #333', background: '#0a0a0a', color: 'white', outline: 'none' }}
+              className="register-input"
             />
+
             <input
               type="text"
               name="slug"
@@ -84,7 +88,7 @@ export default function RegisterOrgPage() {
               value={formData.slug}
               onChange={handleChange}
               required
-              style={{ flex: 1, padding: '0.875rem', borderRadius: '8px', border: '1px solid #333', background: '#0a0a0a', color: 'white', outline: 'none' }}
+              className="register-input"
             />
           </div>
 
@@ -95,7 +99,7 @@ export default function RegisterOrgPage() {
             value={formData.ownerName}
             onChange={handleChange}
             required
-            style={{ width: '100%', padding: '0.875rem', borderRadius: '8px', border: '1px solid #333', background: '#0a0a0a', color: 'white', outline: 'none' }}
+            className="register-input"
           />
 
           <input
@@ -105,7 +109,7 @@ export default function RegisterOrgPage() {
             value={formData.ownerEmail}
             onChange={handleChange}
             required
-            style={{ width: '100%', padding: '0.875rem', borderRadius: '8px', border: '1px solid #333', background: '#0a0a0a', color: 'white', outline: 'none' }}
+            className="register-input"
           />
 
           <input
@@ -115,22 +119,25 @@ export default function RegisterOrgPage() {
             value={formData.password}
             onChange={handleChange}
             required
-            style={{ width: '100%', padding: '0.875rem', borderRadius: '8px', border: '1px solid #333', background: '#0a0a0a', color: 'white', outline: 'none' }}
+            className="register-input"
           />
 
-          <button 
-            type="submit" 
-            className="primary-btn animate-hover" 
-            style={{ width: '100%', border: 'none', marginTop: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}
+          <button
+            type="submit"
+            className="register-button animate-tap"
             disabled={loading}
           >
-            {loading ? 'Creating...' : 'Create Organization'}
+            {loading ? "Creating..." : "Create Organization"}
           </button>
         </form>
 
-        <p style={{ marginTop: '2rem', color: '#a1a1aa' }}>
-          Already have an account? <Link href="/login" style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 'bold' }}>Sign in</Link>
+        <p className="register-login">
+          Already have an account?{" "}
+          <Link href="/login" className="register-link">
+            Sign in
+          </Link>
         </p>
+
       </div>
     </div>
   );

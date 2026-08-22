@@ -1,13 +1,20 @@
-/* admin.css */
+/* =================================
+   ADMIN DASHBOARD
+================================= */
+
 .admin-header h1 {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 700;
   margin-bottom: 2rem;
 }
 
+/* =================================
+   Statistics Cards
+================================= */
+
 .stats-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   margin-bottom: 3rem;
 }
@@ -17,6 +24,22 @@
   padding: 1.5rem;
   border-radius: 12px;
   border: 1px solid var(--border);
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.14);
+
+  border-color: var(--accent);
 }
 
 .stat-title {
@@ -27,33 +50,37 @@
 }
 
 .stat-value {
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 4vw, 2rem);
   font-weight: 700;
   color: var(--accent);
+}
+
+.stat-trend {
+  margin-top: 0.5rem;
 }
 
 .stat-trend.positive {
   color: #22c55e;
   font-size: 0.875rem;
-  margin-top: 0.5rem;
 }
 
 .stat-trend.negative {
   color: #ef4444;
   font-size: 0.875rem;
-  margin-top: 0.5rem;
 }
+
+/* =================================
+   Dashboard Grid
+================================= */
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 3rem;
+  gap: 2rem;
 }
 
-@media (min-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+.dashboard-section {
+  min-width: 0;
 }
 
 .dashboard-section h2 {
@@ -61,10 +88,15 @@
   margin-bottom: 1rem;
 }
 
+/* =================================
+   Section Header
+================================= */
+
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
@@ -74,22 +106,69 @@
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-weight: bold;
+
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.25);
 }
 
 .btn-link {
   color: var(--accent);
   font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.btn-link:hover {
+  opacity: 0.7;
+}
+
+/* =================================
+   Service Cards
+================================= */
+
+.service-list {
+  display: flex;
+  flex-direction: column;
 }
 
 .service-card {
   background-color: var(--card-bg);
   padding: 1.25rem;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
+
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  gap: 1rem;
   margin-bottom: 1rem;
+
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.07);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.12);
+
+  border-color: var(--accent);
+}
+
+.svc-info {
+  min-width: 0;
 }
 
 .svc-info h3 {
@@ -105,35 +184,41 @@
 
 .svc-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
-.btn-icon {
-  font-size: 0.875rem;
-  opacity: 0.7;
+/* =================================
+   Buttons
+================================= */
+
+.secondary-btn {
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.btn-icon:hover {
-  opacity: 1;
+.secondary-btn:hover {
+  transform: translateY(-2px);
 }
 
-.text-red {
-  color: #ef4444;
-}
-
-.text-green {
-  color: #22c55e;
-}
+/* =================================
+   Booking Table
+================================= */
 
 .booking-table-wrapper {
   background-color: var(--card-bg);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
+
   overflow-x: auto;
+
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.07);
 }
 
 .booking-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
 }
 
@@ -150,11 +235,25 @@
   font-size: 0.875rem;
 }
 
+.booking-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.booking-table tbody tr:hover {
+  background-color: rgba(255, 215, 0, 0.04);
+}
+
+/* =================================
+   Badges
+================================= */
+
 .badge {
-  padding: 0.25rem 0.5rem;
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 .badge-confirmed {
@@ -167,7 +266,10 @@
   color: #eab308;
 }
 
-/* Form Styles */
+/* =================================
+   Form Styles
+================================= */
+
 .input-group {
   display: flex;
   flex-direction: column;
@@ -181,23 +283,327 @@
 }
 
 .input-field {
+  width: 100%;
   padding: 0.75rem 1rem;
+
   border-radius: 8px;
   border: 1px solid var(--border);
+
   background-color: var(--background);
   color: var(--foreground);
+
   font-family: inherit;
   font-size: 1rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .input-field:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+
+  box-shadow:
+    0 0 0 3px rgba(255, 215, 0, 0.2);
 }
 
 .input-field:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* =================================
+   Tablet
+================================= */
+
+@media (max-width: 900px) {
+
+  .stats-panel {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-grid {
+    gap: 2rem;
+  }
+
+}
+
+/* =================================
+   Mobile
+================================= */
+
+@media (max-width: 600px) {
+
+  .admin-header h1 {
+    margin-bottom: 1.5rem;
+  }
+
+  .stats-panel {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .dashboard-grid {
+    gap: 2rem;
+  }
+
+  .section-header {
+    align-items: flex-start;
+  }
+
+  .section-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .btn-primary {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .service-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .svc-actions {
+    width: 100%;
+  }
+
+  .svc-actions button {
+    width: 100%;
+  }
+
+  .booking-table-wrapper {
+    border-radius: 8px;
+  }
+
+  .booking-table {
+    min-width: 600px;
+  }
+
+}
+
+/* =================================
+   Very Small Mobile
+================================= */
+
+@media (max-width: 400px) {
+
+  .admin-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-primary {
+    width: 100%;
+  }
+
+  .stat-value {
+    font-size: 1.6rem;
+  }
+
+}
+
+/* =================================
+   Reduced Motion
+================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .stat-card,
+  .service-card,
+  .btn-primary,
+  .secondary-btn,
+  .booking-table tbody tr {
+    transition: none;
+  }
+
+}
+/* =================================
+   SERVICES PAGE
+================================= */
+
+.service-list {
+  width: 100%;
+}
+
+.service-list .service-card {
+  min-width: 0;
+  height: 100%;
+}
+
+/* Service description */
+.text-muted {
+  color: var(--foreground);
+  opacity: 0.65;
+}
+
+/* Service buttons */
+.service-card .secondary-btn {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  border-radius: 6px;
+
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.service-card .secondary-btn:hover {
+  background-color: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* =================================
+   Service Form
+================================= */
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin-header .btn-primary {
+  white-space: nowrap;
+}
+
+.admin-header + .fade-in {
+  animation: serviceFormIn 0.3s ease-out;
+}
+
+@keyframes serviceFormIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Textarea */
+textarea.input-field {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Checkbox */
+#activeCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* =================================
+   Delete Modal
+================================= */
+
+.modal-overlay {
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  animation: modalIn 0.25s ease-out;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* =================================
+   Mobile Services
+================================= */
+
+@media (max-width: 600px) {
+
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-header .btn-primary {
+    width: 100%;
+  }
+
+  /* Form */
+  .admin-header + .fade-in {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 1.25rem !important;
+  }
+
+  /* Duration + Price */
+  .admin-header + .fade-in form > div[style*="display: flex"] {
+    flex-direction: column !important;
+  }
+
+  /* Service cards */
+  .service-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .service-card {
+    width: 100%;
+  }
+
+  /* Service card buttons */
+  .service-card .svc-actions {
+    width: 100%;
+  }
+
+  .service-card .svc-actions button {
+    min-width: 0;
+  }
+
+  /* Delete modal */
+  .modal-content {
+    padding: 1.25rem !important;
+  }
+
+}
+
+/* =================================
+   Very Small Screens
+================================= */
+
+@media (max-width: 400px) {
+
+  .admin-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .modal-content {
+    width: 95% !important;
+  }
+
 }
