@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Calendar, Clock, User as UserIcon, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Calendar, Clock, User as UserIcon, Filter, ChevronLeft, ChevronRight, Trash2, Download } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useBookings, useUpdateBookingStatus, useCancelBooking } from '../../hooks/useBookings';
 import { useStaff } from '../../hooks/useStaff';
@@ -14,6 +15,7 @@ import { SkeletonTableRow } from '../../components/ui/Skeleton';
 import { formatCurrency, formatTime, formatDate } from '../../lib/utils';
 import { Booking, BookingStatus } from '../../types/api';
 import { getErrorMessage } from '../../api/client';
+import { exportBookingsToCsv } from '../../lib/csv-utils';
 
 export function OwnerBookings() {
   const [page, setPage] = useState(1);
@@ -36,6 +38,16 @@ export function OwnerBookings() {
 
   const bookings = bookingsData?.bookings || [];
   const totalPages = bookingsData?.totalPages || 1;
+  const totalBookingsCount = bookingsData?.total || bookings.length;
+
+  const handleExportCsv = () => {
+    if (bookings.length === 0) {
+      toast.info('No bookings available to export.');
+      return;
+    }
+    exportBookingsToCsv(bookings, `appointflow-bookings-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    toast.success(`Exported ${bookings.length} bookings to CSV`);
+  };
 
   const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
@@ -62,14 +74,55 @@ export function OwnerBookings() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-h1 font-bold text-slate-900 dark:text-slate-100">
-          Organization Bookings
-        </h1>
-        <p className="text-body-sm text-slate-500 dark:text-slate-400 mt-1">
-          Master view of all customer appointments, transactions, and scheduled service windows.
-        </p>
+      {/* Header with Export CTA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-h1 font-bold text-slate-900 dark:text-slate-100">
+            Organization Bookings
+          </h1>
+          <p className="text-body-sm text-slate-500 dark:text-slate-400 mt-1">
+            Master view of all customer appointments, transactions, and scheduled service windows.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handleExportCsv}
+            disabled={bookings.length === 0 || isLoading}
+            leftIcon={<Download className="w-4 h-4 text-slate-500" />}
+            className="w-full sm:w-auto"
+          >
+            Export to CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Status Filter Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {[
+          { label: 'All Bookings', value: '' },
+          { label: 'Confirmed', value: 'confirmed' },
+          { label: 'Pending', value: 'pending' },
+          { label: 'Completed', value: 'completed' },
+          { label: 'Cancelled', value: 'cancelled' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => {
+              setStatusFilter(tab.value);
+              setPage(1);
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-body-sm font-medium transition-colors shrink-0 ${
+              statusFilter === tab.value
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Filter Bar */}

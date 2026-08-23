@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, User as UserIcon, CheckCircle2, XCircle, AlertCircle, Sparkles } from 'lucide-react';
+import { Calendar, Clock, User as UserIcon, CheckCircle2, XCircle, AlertCircle, Sparkles, Check } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useBookings, useUpdateBookingStatus, useCancelBooking } from '../../hooks/useBookings';
 import { useAuth } from '../../hooks/useAuth';
@@ -24,6 +25,8 @@ export function StaffDashboard() {
   const cancelBookingMutation = useCancelBooking();
 
   const bookings = bookingsData?.bookings || [];
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayBookings = bookings.filter((b) => b.date === todayStr && b.status !== 'cancelled');
 
   const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
@@ -83,6 +86,63 @@ export function StaffDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Today's Agenda Banner */}
+      {todayBookings.length > 0 && (
+        <Card padding="md" className="border-brand-200 dark:border-brand-900 bg-brand-50/40 dark:bg-brand-950/20">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <h2 className="text-h3 font-semibold text-slate-900 dark:text-slate-100">
+                Today's Agenda ({todayBookings.length} {todayBookings.length === 1 ? 'appointment' : 'appointments'})
+              </h2>
+            </div>
+            <span className="text-caption font-medium text-slate-500">
+              {formatDate(todayStr, 'MMMM d, yyyy')}
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-200/60 dark:divide-slate-800">
+            {todayBookings.map((b) => {
+              const customer = typeof b.customerId === 'object' ? b.customerId : { name: 'Customer', email: '' };
+              const serviceName = typeof b.serviceId === 'object' ? b.serviceId?.name : 'Service';
+              return (
+                <div key={b._id} className="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-body-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {formatTime(b.startAt)} - {formatTime(b.endAt)}
+                      </span>
+                      <span className="text-slate-400">•</span>
+                      <span className="text-body-sm text-slate-700 dark:text-slate-300 font-medium">
+                        {serviceName}
+                      </span>
+                      <Badge variant={b.status} className="capitalize text-caption">
+                        {b.status}
+                      </Badge>
+                    </div>
+                    <p className="text-caption text-slate-500 dark:text-slate-400 mt-0.5">
+                      Client: {customer.name} ({customer.email})
+                    </p>
+                  </div>
+
+                  {b.status !== 'completed' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleStatusChange(b._id, 'completed')}
+                      leftIcon={<Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      className="shrink-0"
+                    >
+                      Complete
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Bookings List */}
       {isLoading ? (

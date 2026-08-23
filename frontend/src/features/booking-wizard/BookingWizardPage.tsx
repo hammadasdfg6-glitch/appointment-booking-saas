@@ -1,6 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, X, Clock, Calendar as CalendarIcon, User as UserIcon, CreditCard, ShieldCheck } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  X,
+  Clock,
+  Calendar as CalendarIcon,
+  User as UserIcon,
+  CreditCard,
+  ShieldCheck,
+  Search,
+  Sun,
+  Sunset,
+  Sunrise,
+  Timer,
+  AlertCircle,
+} from 'lucide-react';
 import { format, addDays, isBefore, startOfToday, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -11,6 +26,7 @@ import { useCreateBooking } from '../../hooks/useBookings';
 import { checkoutApi } from '../../api/checkout.api';
 
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Stepper } from '../../components/ui/Stepper';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -39,6 +55,16 @@ export function BookingWizardPage() {
   const [selectedSlot, setSelectedSlot] = useState<SlotItem | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  // Step 1 Search & Filter State
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [durationFilter, setDurationFilter] = useState<'all' | 'quick' | 'standard' | 'long'>('all');
+
+  // Step 4 Time-of-Day Tab State
+  const [timeOfDayFilter, setTimeOfDayFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening'>('all');
+
+  // Step 5 2-Minute Hold Timer State (120 seconds)
+  const [holdSecondsLeft, setHoldSecondsLeft] = useState(120);
+
   // Queries
   const { data: servicesData, isLoading: isLoadingServices } = useServices(1, 100);
   const { data: staffList, isLoading: isLoadingStaff } = useStaff();
@@ -49,10 +75,71 @@ export function BookingWizardPage() {
 
   const createBookingMutation = useCreateBooking();
 
+  // 2-minute countdown timer on Step 5
+  useEffect(() => {
+    if (currentStep !== 5) {
+      setHoldSecondsLeft(120);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setHoldSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          toast.warning('Hold time expired. Please re-select your slot.');
+          setCurrentStep(4);
+          setSelectedSlot(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentStep]);
+
   // Filter staff to role === 'staff' only (per Section 6 requirement)
   const staffOnly = (staffList || []).filter((s) => s.role === 'staff');
 
   const activeServices = (servicesData?.services || []).filter((s) => s.active !== false);
+
+  // Filter services by search text and duration filter
+  const filteredServices = activeServices.filter((service) => {
+    const matchesSearch =
+      service.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+      (service.description && service.description.toLowerCase().includes(serviceSearch.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (durationFilter === 'quick') return service.durationMinutes <= 30;
+    if (durationFilter === 'standard') return service.durationMinutes > 30 && service.durationMinutes <= 60;
+    if (durationFilter === 'long') return service.durationMinutes > 60;
+    return true;
+  });
+
+  // Slot Bucketing Helper
+  const allSlots = slotsData?.slots || [];
+  const morningSlots = allSlots.filter((s) => {
+    const hour = parseInt(s.startTime.split(':')[0], 10);
+    return hour < 12;
+  });
+  const afternoonSlots = allSlots.filter((s) => {
+    const hour = parseInt(s.startTime.split(':')[0], 10);
+    return hour >= 12 && hour < 17;
+  });
+  const eveningSlots = allSlots.filter((s) => {
+    const hour = parseInt(s.startTime.split(':')[0], 10);
+    return hour >= 17;
+  });
+
+  const displayedSlots =
+    timeOfDayFilter === 'morning'
+      ? morningSlots
+      : timeOfDayFilter === 'afternoon'
+      ? afternoonSlots
+      : timeOfDayFilter === 'evening'
+      ? eveningSlots
+      : allSlots;
 
   // Handlers
   const handleSelectService = (service: Service) => {
@@ -187,6 +274,55 @@ export function BookingWizardPage() {
               </p>
             </div>
 
+            {/* Service Search and Filter Toolbar */}
+            {activeServices.length > 0 && (
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                <div className="flex-1 max-w-sm">
+                  <Input
+                    placeholder="Search services..."
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    leftAddon={<Search className="w-4 h-4 text-slate-400" />}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                  <button
+                    type="button"
+                    onClick={() => setDurationFilter('all')}
+                    className={`px-3 py-1.5 text-caption font-medium rounded-lg transition-colors shrink-0 ${
+                      durationFilter === 'all'
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    All Durations
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDurationFilter('quick')}
+                    className={`px-3 py-1.5 text-caption font-medium rounded-lg transition-colors shrink-0 ${
+                      durationFilter === 'quick'
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    ≤ 30 min
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDurationFilter('standard')}
+                    className={`px-3 py-1.5 text-caption font-medium rounded-lg transition-colors shrink-0 ${
+                      durationFilter === 'standard'
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    30-60 min
+                  </button>
+                </div>
+              </div>
+            )}
+
             {isLoadingServices ? (
               <div className="grid sm:grid-cols-2 gap-4">
                 <SkeletonCard />
@@ -201,9 +337,20 @@ export function BookingWizardPage() {
                 actionLabel="Back to Dashboard"
                 onAction={() => navigate('/dashboard/customer')}
               />
+            ) : filteredServices.length === 0 ? (
+              <EmptyState
+                icon={Search}
+                title="No matching services found"
+                description="Try clearing your search query or adjusting duration filters."
+                actionLabel="Clear Filters"
+                onAction={() => {
+                  setServiceSearch('');
+                  setDurationFilter('all');
+                }}
+              />
             ) : (
               <div className="grid sm:grid-cols-2 gap-4">
-                {activeServices.map((service) => {
+                {filteredServices.map((service) => {
                   const isSelected = selectedService?._id === service._id;
                   return (
                     <button
@@ -350,6 +497,65 @@ export function BookingWizardPage() {
               </p>
             </div>
 
+            {/* Time-of-Day Filter Tabs */}
+            {allSlots.length > 0 && (
+              <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setTimeOfDayFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors ${
+                    timeOfDayFilter === 'all'
+                      ? 'bg-brand-600 text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  All Times ({allSlots.length})
+                </button>
+                {morningSlots.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTimeOfDayFilter('morning')}
+                    className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors flex items-center gap-1.5 ${
+                      timeOfDayFilter === 'morning'
+                        ? 'bg-brand-600 text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Sunrise className="w-3.5 h-3.5" />
+                    Morning ({morningSlots.length})
+                  </button>
+                )}
+                {afternoonSlots.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTimeOfDayFilter('afternoon')}
+                    className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors flex items-center gap-1.5 ${
+                      timeOfDayFilter === 'afternoon'
+                        ? 'bg-brand-600 text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5" />
+                    Afternoon ({afternoonSlots.length})
+                  </button>
+                )}
+                {eveningSlots.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTimeOfDayFilter('evening')}
+                    className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors flex items-center gap-1.5 ${
+                      timeOfDayFilter === 'evening'
+                        ? 'bg-brand-600 text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Sunset className="w-3.5 h-3.5" />
+                    Evening ({eveningSlots.length})
+                  </button>
+                )}
+              </div>
+            )}
+
             {isLoadingSlots ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -364,9 +570,17 @@ export function BookingWizardPage() {
                 actionLabel="Choose Another Date"
                 onAction={() => setCurrentStep(3)}
               />
+            ) : displayedSlots.length === 0 ? (
+              <EmptyState
+                icon={Clock}
+                title="No slots in this time period"
+                description="Try switching to another time-of-day category."
+                actionLabel="Show All Times"
+                onAction={() => setTimeOfDayFilter('all')}
+              />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {slotsData.slots.map((slot) => {
+                {displayedSlots.map((slot) => {
                   const isSelected = selectedSlot?._id === slot._id;
                   return (
                     <button
@@ -398,6 +612,31 @@ export function BookingWizardPage() {
               <p className="text-body-sm text-slate-500 dark:text-slate-400 mt-1">
                 Please double-check your appointment information before continuing.
               </p>
+            </div>
+
+            {/* 2-Minute Hold Timer Banner */}
+            <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors ${
+              holdSecondsLeft > 45
+                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
+                : holdSecondsLeft > 15
+                ? 'bg-amber-50/80 border-amber-200 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300'
+                : 'bg-danger-50/80 border-danger-200 text-danger-900 dark:bg-danger-950/40 dark:border-danger-800 dark:text-danger-300 animate-pulse'
+            }`}>
+              <div className="flex items-center gap-3">
+                <Timer className="w-5 h-5 shrink-0" />
+                <div>
+                  <span className="text-body-sm font-semibold block">
+                    Slot Reserved Under Hold
+                  </span>
+                  <span className="text-caption opacity-80">
+                    Complete your reservation before the hold lock expires.
+                  </span>
+                </div>
+              </div>
+              <div className="font-mono text-h3 font-bold shrink-0">
+                {String(Math.floor(holdSecondsLeft / 60)).padStart(2, '0')}:
+                {String(holdSecondsLeft % 60).padStart(2, '0')}
+              </div>
             </div>
 
             <Card padding="lg">

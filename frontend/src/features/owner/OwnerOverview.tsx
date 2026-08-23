@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar,
@@ -8,6 +9,10 @@ import {
   ArrowRight,
   TrendingUp,
   Clock,
+  Copy,
+  Check,
+  ExternalLink,
+  Share2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -18,6 +23,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { toast } from 'sonner';
+import { useAuth } from '../../hooks/useAuth';
 import { useTotalStats, useAdvancedStats } from '../../hooks/useStats';
 import { useBookings } from '../../hooks/useBookings';
 import { StatCard } from '../../components/ui/StatCard';
@@ -28,11 +35,28 @@ import { SkeletonCard, SkeletonTableRow } from '../../components/ui/Skeleton';
 import { formatCurrency, formatTime, formatDate } from '../../lib/utils';
 
 export function OwnerOverview() {
+  const { user } = useAuth();
   const { data: totalStats, isLoading: isLoadingTotals } = useTotalStats();
   const { data: advancedStats, isLoading: isLoadingAdvanced } = useAdvancedStats();
   const { data: bookingsData, isLoading: isLoadingBookings } = useBookings({ limit: 5 });
 
+  const [hasCopiedLink, setHasCopiedLink] = useState(false);
+
   const recentBookings = bookingsData?.bookings || [];
+
+  // Public Booking Link
+  const publicBookingUrl = `${window.location.origin}/book?org=${encodeURIComponent(user?.orgId || 'org')}`;
+
+  const handleCopyBookingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicBookingUrl);
+      setHasCopiedLink(true);
+      toast.success('Public booking link copied to clipboard!');
+      setTimeout(() => setHasCopiedLink(false), 2500);
+    } catch {
+      toast.error('Failed to copy link.');
+    }
+  };
 
   // Trend data parsing
   const weeklyRevChange = parseFloat(advancedStats?.comparisons?.revenueThisWeekVsLastWeek || '0');
@@ -80,6 +104,51 @@ export function OwnerOverview() {
               All Bookings
             </Button>
           </Link>
+        </div>
+      </div>
+
+      {/* Shareable Public Booking Link Banner */}
+      <div className="p-4 rounded-xl border border-brand-200 dark:border-brand-900/60 bg-gradient-to-r from-brand-50/70 to-indigo-50/50 dark:from-brand-950/40 dark:to-indigo-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-brand-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Share2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-body-sm font-semibold text-slate-900 dark:text-slate-100">
+              Share Your Public Booking Link
+            </h4>
+            <p className="text-caption text-slate-600 dark:text-slate-400 mt-0.5">
+              Clients can book your services directly without logging into an admin account.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="hidden md:block px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-caption font-mono text-slate-600 dark:text-slate-300 truncate max-w-xs select-all">
+            {publicBookingUrl}
+          </div>
+          <Button
+            variant={hasCopiedLink ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={handleCopyBookingLink}
+            leftIcon={hasCopiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          >
+            {hasCopiedLink ? 'Copied!' : 'Copy Link'}
+          </Button>
+          <a
+            href={publicBookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex"
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<ExternalLink className="w-3.5 h-3.5" />}
+            >
+              Open
+            </Button>
+          </a>
         </div>
       </div>
 

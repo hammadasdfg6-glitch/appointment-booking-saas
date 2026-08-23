@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { CheckCircle2, Calendar, Clock, User as UserIcon, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Calendar, Clock, User as UserIcon, ArrowRight, Loader2, RefreshCw, CalendarPlus, Download } from 'lucide-react';
 import { checkoutApi } from '../api/checkout.api';
 import { Booking, Service, User, SlotItem } from '../types/api';
 import { Card } from '../components/ui/Card';
@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { formatTime, formatDate } from '../lib/utils';
 import { getErrorMessage } from '../api/client';
+import { createGoogleCalendarUrl, downloadIcsFile } from '../lib/calendar-utils';
 
 export function BookingSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -47,6 +48,41 @@ export function BookingSuccessPage() {
       confirmPayment(sessionId);
     }
   }, [sessionId]);
+
+  const serviceName = booking?.serviceId
+    ? typeof booking.serviceId === 'object'
+      ? booking.serviceId.name
+      : 'Scheduled Service'
+    : stateData?.service?.name || 'Appointment';
+
+  const appointmentDate = booking?.date || stateData?.date || '';
+  const appointmentTime = booking?.startAt || stateData?.slot?.startTime || '';
+  const appointmentEndTime = booking?.endAt || stateData?.slot?.endTime || '';
+
+  const calendarEvent = {
+    title: `${serviceName} - AppointFlow`,
+    description: `Appointment with ${
+      booking?.staffId
+        ? typeof booking.staffId === 'object'
+          ? booking.staffId.name
+          : 'Service Provider'
+        : stateData?.staff?.name || 'Service Provider'
+    }`,
+    date: appointmentDate,
+    startTime: appointmentTime,
+    endTime: appointmentEndTime,
+  };
+
+  const handleGoogleCalendar = () => {
+    if (!appointmentDate) return;
+    const url = createGoogleCalendarUrl(calendarEvent);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadIcs = () => {
+    if (!appointmentDate) return;
+    downloadIcsFile(calendarEvent);
+  };
 
   return (
     <div className="min-h-screen bg-canvas dark:bg-slate-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -110,11 +146,7 @@ export function BookingSuccessPage() {
               <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-5 text-left space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-body-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {booking?.serviceId
-                      ? typeof booking.serviceId === 'object'
-                        ? booking.serviceId.name
-                        : 'Scheduled Service'
-                      : stateData?.service?.name || 'Appointment'}
+                    {serviceName}
                   </span>
                   <Badge variant="confirmed">Confirmed</Badge>
                 </div>
@@ -123,10 +155,8 @@ export function BookingSuccessPage() {
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-slate-400" />
                     <span>
-                      {booking?.date
-                        ? formatDate(booking.date, 'EEEE, MMMM d, yyyy')
-                        : stateData?.date
-                        ? formatDate(stateData.date, 'EEEE, MMMM d, yyyy')
+                      {appointmentDate
+                        ? formatDate(appointmentDate, 'EEEE, MMMM d, yyyy')
                         : 'Scheduled Date'}
                     </span>
                   </div>
@@ -134,10 +164,8 @@ export function BookingSuccessPage() {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-400" />
                     <span>
-                      {booking?.startAt
-                        ? formatTime(booking.startAt)
-                        : stateData?.slot?.startTime
-                        ? formatTime(stateData.slot.startTime)
+                      {appointmentTime
+                        ? formatTime(appointmentTime)
                         : 'Scheduled Time'}
                     </span>
                   </div>
@@ -156,6 +184,35 @@ export function BookingSuccessPage() {
                   )}
                 </div>
               </div>
+
+              {/* Calendar Quick Actions */}
+              {appointmentDate && (
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/70 space-y-2">
+                  <span className="text-caption font-medium text-slate-500 dark:text-slate-400 block text-center">
+                    Add to your calendar
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleGoogleCalendar}
+                      leftIcon={<CalendarPlus className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />}
+                      className="text-caption"
+                    >
+                      Google Cal
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleDownloadIcs}
+                      leftIcon={<Download className="w-3.5 h-3.5 text-slate-500" />}
+                      className="text-caption"
+                    >
+                      Apple / Outlook
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-2 flex flex-col gap-2.5">
                 <Link to="/dashboard/customer">

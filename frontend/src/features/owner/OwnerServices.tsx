@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Edit2, Trash2, Clock, DollarSign, Briefcase } from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock, DollarSign, Briefcase, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useServices,
@@ -30,6 +30,7 @@ export function OwnerServices() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deletingService, setDeletingService] = useState<Service | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Form for Add/Edit
   const {
@@ -50,6 +51,11 @@ export function OwnerServices() {
   });
 
   const services = (servicesData?.services || []).filter((s) => s.active !== false);
+
+  const filteredServices = services.filter((s) =>
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.description && s.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const openAddModal = () => {
     reset({
@@ -138,6 +144,18 @@ export function OwnerServices() {
         </Button>
       </div>
 
+      {/* Search and Filter Bar */}
+      {services.length > 0 && (
+        <div className="max-w-md">
+          <Input
+            placeholder="Search services by name or description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            leftAddon={<Search className="w-4 h-4 text-slate-400" />}
+          />
+        </div>
+      )}
+
       {/* Services Table Card */}
       <Card padding="none">
         <div className="overflow-x-auto">
@@ -171,8 +189,20 @@ export function OwnerServices() {
                     />
                   </td>
                 </tr>
+              ) : filteredServices.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8">
+                    <EmptyState
+                      icon={Search}
+                      title="No matching services found"
+                      description="Try clearing your search query."
+                      actionLabel="Clear Search"
+                      onAction={() => setSearchTerm('')}
+                    />
+                  </td>
+                </tr>
               ) : (
-                services.map((service) => (
+                filteredServices.map((service) => (
                   <tr
                     key={service._id || service.name}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
