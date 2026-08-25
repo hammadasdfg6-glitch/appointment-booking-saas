@@ -71,7 +71,12 @@ export const authApi = {
     return data.user;
   },
 
-  async updateProfile(payload: { name?: string; email?: string }) {
+  async updateProfile(payload: {
+    name?: string;
+    email?: string;
+    oldPassword?: string;
+    newPassword?: string;
+  }) {
     const { data } = await apiClient.patch<{ success: boolean; message: string; user: User }>(
       '/auth/me',
       payload
