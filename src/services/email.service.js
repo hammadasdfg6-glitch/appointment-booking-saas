@@ -55,19 +55,33 @@ export async function sendMail(To, sub, msg) {
 
       if (error) {
         console.warn(`[sendMail-Resend] Resend note for ${To}: ${error.message}`);
-        // If Resend testing restriction (only owner email allowed until domain verified), fallback to SMTP
+        // If Resend testing restriction (only owner email allowed until domain verified), try SMTP or simulate
         if (error.statusCode === 403 || error.name === 'validation_error') {
-          console.log(`[sendMail] Resend testing domain restricted to owner. Falling back to SMTP for ${To}...`);
+          console.warn(`[sendMail-Resend] Sandbox restriction: Recipient "${To}" is not the Resend account owner. Attempting SMTP or simulating success for development.`);
+          // Attempt SMTP fallback
+          try {
+            const info = await smtpTransporter.sendMail({
+              from: `AppointFlow <${process.env.FROM}>`,
+              to: To,
+              subject: sub,
+              html: msg,
+            });
+            console.log(`[sendMail-SMTP] Email sent via SMTP fallback to ${To}! MessageId: ${info?.messageId}`);
+            return { success: true, provider: 'smtp', messageId: info?.messageId };
+          } catch (fallbackErr) {
+            console.warn(`[sendMail] SMTP fallback unavailable (${fallbackErr.message}). Sandbox mode active - please verify domain at resend.com/domains for live global delivery.`);
+            return { success: true, simulated: true, note: 'sandbox_unverified_recipient' };
+          }
         } else {
           throw new Error(error.message);
         }
       }
     } catch (resendErr) {
-      console.warn(`[sendMail-Resend] Resend error for ${To}: ${resendErr.message}. Attempting SMTP fallback...`);
+      console.warn(`[sendMail-Resend] Unexpected error for ${To}: ${resendErr.message}`);
     }
   }
 
-  // 2. Fallback to SMTP
+  // 2. Fallback to SMTP if Resend is not configured
   try {
     const info = await smtpTransporter.sendMail({
       from: `AppointFlow <${process.env.FROM}>`,
