@@ -34,11 +34,28 @@ app.use(cookieParser())
 
 app.use('/checkout/webhook', express.raw({ type: 'application/json' }))
 
-app.use(express.json());
+const configuredFrontend = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const allowedOrigins = [
+  configuredFrontend,
+  'https://appointment-booking-saas.vercel.app',
+  'http://localhost:3000',
+];
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true 
-}))
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/+$/, '');
+    if (
+      allowedOrigins.includes(cleanOrigin) ||
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/.*\.vercel\.app$/.test(cleanOrigin)
+    ) {
+      return callback(null, true);
+    }
+    callback(null, false);
+  },
+  credentials: true,
+}));
 
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
