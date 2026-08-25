@@ -45,8 +45,8 @@ export function LandingPage() {
       <main className="flex-1">
         <section className="relative pt-16 pb-20 md:pt-24 md:pb-32 overflow-hidden">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-200 dark:border-brand-800 bg-brand-50/80 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-label font-medium mb-6 animate-in fade-in">
-              <Sparkles className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-brand-200 dark:border-brand-700/60 bg-brand-50/90 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 text-label font-semibold mb-6 shadow-sm">
+              <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0" />
               <span>The Next-Gen SaaS Booking Infrastructure</span>
             </div>
 
