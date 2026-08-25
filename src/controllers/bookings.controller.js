@@ -56,12 +56,12 @@ export const createBooking = catchAsync(async (req, res, next) => {
   }
 
   const slot = chkslot.slots.find((item) => {
-    // Checking if slot is available
-    if (
-      timeToMinutes(item.startTime) >= timeToMinutes(startAt) &&
-      timeToMinutes(item.endTime) >= timeToMinutes(endAt) &&
-      "available" === item.status
-    ) {
+    // Checking if slot is available for exact requested time or slotId
+    const isExactMatch = req.body.slotId
+      ? item._id.toString() === req.body.slotId.toString()
+      : item.startTime === startAt;
+
+    if (isExactMatch && ("available" === item.status || "locked" === item.status)) {
       return item;
     }
   });
@@ -74,9 +74,10 @@ export const createBooking = catchAsync(async (req, res, next) => {
   const slotId = slot._id;
   const status = "confirmed";
 
-  // After booking locking a slot  to prevent overiding
+  // After booking, lock any other overlapping slots
   chkslot.slots.forEach((item) => {
     if (
+      item._id.toString() !== slot._id.toString() &&
       timeToMinutes(item.startTime) < timeToMinutes(slot.endTime) &&
       timeToMinutes(item.endTime) > timeToMinutes(slot.startTime) &&
       "available" === item.status
@@ -97,6 +98,7 @@ export const createBooking = catchAsync(async (req, res, next) => {
     price,
     startAt: slot.startTime,
     endAt: slot.endTime,
+    stripeSessionId: req.body.stripeSessionId || null,
   });
   await booking.save();
   await chkslot.save();

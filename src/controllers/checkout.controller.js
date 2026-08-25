@@ -73,173 +73,142 @@ export const createCheckoutSession = catchAsync(async (req, res, next) => {
     })
 })
 
-export const confirmCheckout = catchAsync(async (req, res, next) => {
-    const { session_id } = req.query
+// Shared idempotent helper to process a completed Stripe Checkout session
+const processSuccessfulPayment = async (session) => {
+    if (!session || !session.id) return null;
 
-    if (!session_id) {
-        return next(new AppError('Session ID is required', 'Bad Request', 400))
-    }
-
-    // Retrieve the session from Stripe to verify payment
-    const session = await stripe.checkout.sessions.retrieve(session_id)
-
-    if (session.payment_status !== 'paid') {
-        return next(new AppError('Payment not completed', 'Bad Request', 400))
-    }
-
-    const metadata = session.metadata
-
-    // Check if booking already exists for this session (idempotency)
-    const existingBooking = await Booking.findOne({ stripeSessionId: session.id })
+    // Check if booking already exists for this session
+    const existingBooking = await Booking.findOne({ stripeSessionId: session.id });
     if (existingBooking) {
-        return res.status(200).json({
-            success: true,
-            message: 'Booking already confirmed',
-            booking: existingBooking
-        })
+        return existingBooking;
     }
 
-    // Remove the Hold from Redis since they successfully paid
-    await redis.del(`hold:${metadata.slotId}`)
-
-    const mockReq = {
-        body: {
-            customerId: metadata.customerId,
-            serviceId: metadata.serviceId,
-            staffId: metadata.staffId,
-            startAt: metadata.startAt,
-            date: metadata.date
-        },
-        user: { _id: metadata.customerId },
-        orgId: metadata.orgId
+    // Atomic Redis Lock to prevent race condition between confirmCheckout & stripeWebhook
+    const lockKey = `stripe_process_lock:${session.id}`;
+    const acquired = await redis.set(lockKey, 'processing', 'EX', 120, 'NX');
+    if (!acquired) {
+        // Another process is handling this, wait slightly and return existing booking
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        return await Booking.findOne({ stripeSessionId: session.id });
     }
-
-    let responseData = null
-    const mockRes = {
-        status: function () { return this },
-        json: function (data) { responseData = data; return this }
-    }
-
-    const mockNext = (err) => { if (err) { console.error("Confirm Checkout Booking Error:", err); throw err; } }
-
-    await createBooking(mockReq, mockRes, mockNext)
-
-    
-    if (responseData?.booking?._id) {
-        await Booking.findByIdAndUpdate(responseData.booking._id, { stripeSessionId: session.id })
-    }
-    
-    const amount = session.amount_total / 100
-    
-    const revenue = new Revenue({
-        orgId: metadata.orgId,
-        customerId: metadata.customerId,
-        serviceId: metadata.serviceId,
-        staffId: metadata.staffId,
-        bookingId: responseData?.booking?._id || null,
-        stripeSessionId: session.id,
-        amount: amount,
-        date: metadata.date
-    })
-    await revenue.save()
-
-    
-    const dateStr = formatDateString(new Date())
-    await Stats.findOneAndUpdate(
-        { orgId: metadata.orgId, date: dateStr },
-        { $inc: { totalBookings: 1, totalRevenue: amount } },
-        { upsert: true, returnDocument: 'after' }
-    )
-
-    return res.status(200).json({
-        success: true,
-        message: 'Booking confirmed',
-        booking: responseData?.booking || null
-    })
-})
-
-
-export const stripeWebhook = catchAsync(async (req, res, next) => {
-    
-    const signature = req.headers['stripe-signature']
-
-    let event;
 
     try {
-        event = stripe.webhooks.constructEvent(
-            req.body,
-            signature,
-            process.env.STRIPE_WEBHOOK_SECRET
-        )
-    }
-    catch (err) {
-        return res.status(400).send(`Webhook Error: ${err.message}`)
-    }
-
-    // Handle different checkout events
-    if (event.type === 'checkout.session.completed'){
-
-        const session = event.data.object
-        const metadata = session.metadata
+        const metadata = session.metadata;
+        if (!metadata) return null;
 
         // Remove the Hold from Redis since they successfully paid
-        await redis.del(`hold:${metadata.slotId}`)
+        if (metadata.slotId) {
+            await redis.del(`hold:${metadata.slotId}`);
+        }
 
         const mockReq = {
             body: {
                 customerId: metadata.customerId,
                 serviceId: metadata.serviceId,
                 staffId: metadata.staffId,
+                slotId: metadata.slotId,
                 startAt: metadata.startAt,
-                date: metadata.date
+                date: metadata.date,
+                stripeSessionId: session.id,
             },
-            user: { _id: metadata.customerId },
-            orgId: metadata.orgId
-        }
+            user: { _id: metadata.customerId, role: 'customer' },
+            orgId: metadata.orgId,
+        };
 
         let responseData = null;
         const mockRes = {
-            status: function () { return this },
-            json: function (data) { responseData = data; return this }
+            status: function () { return this; },
+            json: function (data) { responseData = data; return this; },
+        };
+
+        const mockNext = (err) => {
+            if (err) {
+                console.error("Payment Processing Booking Error:", err);
+            }
+        };
+
+        await createBooking(mockReq, mockRes, mockNext);
+
+        const bookingId = responseData?.booking?._id;
+        if (bookingId) {
+            await Booking.findByIdAndUpdate(bookingId, { stripeSessionId: session.id });
         }
 
-        const mockNext = (err) => { if (err) { console.error("Webhook Booking Error:", err); throw err; } }
+        const amount = (session.amount_total || 0) / 100;
 
-        await createBooking(mockReq, mockRes, mockNext)
-        
-        
-        const amount = session.amount_total / 100;
-        
         const revenue = new Revenue({
             orgId: metadata.orgId,
             customerId: metadata.customerId,
             serviceId: metadata.serviceId,
             staffId: metadata.staffId,
-            bookingId: responseData?.booking?._id || null,
+            bookingId: bookingId || null,
             stripeSessionId: session.id,
             amount: amount,
-            date: metadata.date
+            date: metadata.date,
         });
         await revenue.save();
 
-        
         const dateStr = formatDateString(new Date());
         await Stats.findOneAndUpdate(
             { orgId: metadata.orgId, date: dateStr },
             { $inc: { totalBookings: 1, totalRevenue: amount } },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
+        return responseData?.booking || await Booking.findOne({ stripeSessionId: session.id });
+    } finally {
+        await redis.del(lockKey);
     }
-    else if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
-        
-        // Release the lock if user doesnt complete paymenrt in required time
-        const session = event.data.object
+};
+
+export const confirmCheckout = catchAsync(async (req, res, next) => {
+    const { session_id } = req.query;
+
+    if (!session_id) {
+        return next(new AppError('Session ID is required', 'Bad Request', 400));
+    }
+
+    // Retrieve the session from Stripe to verify payment
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status !== 'paid') {
+        return next(new AppError('Payment not completed', 'Bad Request', 400));
+    }
+
+    const booking = await processSuccessfulPayment(session);
+
+    return res.status(200).json({
+        success: true,
+        message: 'Booking confirmed',
+        booking: booking || null,
+    });
+});
+
+export const stripeWebhook = catchAsync(async (req, res, next) => {
+    const signature = req.headers['stripe-signature'];
+
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            signature,
+            process.env.STRIPE_WEBHOOK_SECRET
+        );
+    } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle different checkout events
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        await processSuccessfulPayment(session);
+    } else if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
+        // Release the lock if user doesnt complete payment in required time
+        const session = event.data.object;
         if (session.metadata?.slotId) {
-            await redis.del(`hold:${session.metadata.slotId}`)
+            await redis.del(`hold:${session.metadata.slotId}`);
         }
     }
 
-
-    res.status(200).json({ received: true })
-})
+    res.status(200).json({ received: true });
+});
