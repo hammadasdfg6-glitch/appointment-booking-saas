@@ -7,10 +7,18 @@ if (typeof dns.setDefaultResultOrder === 'function') {
 }
 
 const transporter = nodemailer.createTransport({
+  pool: true,
+  maxConnections: 3,
+  maxMessages: 100,
+  rateDelta: 1000,
+  rateLimit: 3,
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
-  family: 4, // Force IPv4 socket connection
+  family: 4, // Force IPv4
+  lookup: (hostname, options, callback) => {
+    return dns.lookup(hostname, { family: 4 }, callback);
+  },
   auth: {
     user: process.env.FROM,
     pass: process.env.PASS,

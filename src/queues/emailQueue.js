@@ -10,8 +10,8 @@ export const emailQueue = new Queue('email-queue', {
             type: 'exponential',
             delay: 2000,
         },
-        removeOnComplete: { age: 3600, count: 100 },
-        removeOnFail: { age: 86400, count: 50 },
+        removeOnComplete: true, // Automatically delete completed jobs immediately
+        removeOnFail: true,     // Automatically delete failed jobs immediately from Redis
     },
 });
 
@@ -25,6 +25,20 @@ export async function emailJob(email, sub, body, options = {}) {
         subject: sub,
         body: body,
     }, options);
+}
+
+export async function cleanFailedJobs() {
+    try {
+        const failedJobs = await emailQueue.getJobs(['failed']);
+        for (const job of failedJobs) {
+            await job.remove();
+        }
+        console.log(`[emailQueue] Cleaned up ${failedJobs.length} failed jobs.`);
+        return failedJobs.length;
+    } catch (err) {
+        console.error('[emailQueue] Error cleaning failed jobs:', err.message);
+        return 0;
+    }
 }
 
 export const emailWorker = new Worker('email-queue', async (job) => {
@@ -44,15 +58,27 @@ export const emailWorker = new Worker('email-queue', async (job) => {
     return message;
 }, {
     connection: redis,
-    concurrency: 5,
+    concurrency: 2,
+    limiter: {
+        max: 2,
+        duration: 1000,
+    },
 });
 
 emailWorker.on('completed', (job) => {
     console.log(`[emailWorker] Job ${job.id} completed for ${job.data?.to}`);
 });
 
-emailWorker.on('failed', (job, err) => {
+emailWorker.on('failed', async (job, err) => {
     console.error(`[emailWorker] Job ${job?.id} failed for ${job?.data?.to}:`, err.message);
+    if (job) {
+        try {
+            await job.remove();
+            console.log(`[emailWorker] Deleted failed job ${job.id} from queue.`);
+        } catch (removeErr) {
+            // Already removed by removeOnFail: true
+        }
+    }
 });
 
 emailWorker.on('error', (err) => {
