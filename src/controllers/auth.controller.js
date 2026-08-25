@@ -8,6 +8,16 @@ import { emailJob } from "../queues/emailQueue.js";
 import redis from "../config/redis.js";
 import crypto from "crypto";
 
+const getCookieOptions = (maxAge) => {
+  const isProd = process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true";
+  return {
+    httpOnly: true,
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
+    ...(maxAge ? { maxAge } : {}),
+  };
+};
+
 export const getStaff = catchAsync(async (req, res, next) => {
 
   const orgId = req.orgId;
@@ -78,19 +88,8 @@ export const registerOrg = catchAsync(async (req, res, next) => {
     expiresIn: "7d",
   });
 
-  res.cookie("token", accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 15 * 60 * 1000,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 3 * 60 * 60 * 1000,
-  });
+  res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
+  res.cookie("refreshToken", refreshToken, getCookieOptions(3 * 60 * 60 * 1000));
 
   await redis.set(`refreshToken:${_id}`, refreshToken, "EX", 3 * 60 * 60);
 
@@ -168,19 +167,8 @@ export const registerCustomer = catchAsync(async (req, res, next) => {
     expiresIn: "7d"
   });
 
-  res.cookie("token", accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 15 * 60 * 1000
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 3 * 60 * 60 * 1000
-  });
+  res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
+  res.cookie("refreshToken", refreshToken, getCookieOptions(3 * 60 * 60 * 1000));
 
   await redis.set(`refreshToken:${_id}`, refreshToken, "EX", 3 * 60 * 60);
 
@@ -219,22 +207,10 @@ export const Login = catchAsync(async (req, res, next) => {
     expiresIn: "7d",
   });
 
-  res.cookie("token", accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 15 * 60 * 1000,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 3 * 60 * 60 * 1000,
-  });
+  res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
+  res.cookie("refreshToken", refreshToken, getCookieOptions(3 * 60 * 60 * 1000));
 
   await redis.set(`refreshToken:${_id}`, refreshToken, "EX", 3 * 60 * 60);
-
 
   return res.status(200).json({
     success: true,
@@ -268,12 +244,7 @@ export const refresh = catchAsync(async (req, res, next) => {
     { expiresIn: "15m" },
   );
 
-  res.cookie("token", accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 15 * 60 * 1000,
-  });
+  res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
 
   return res.status(200).json({
     success: true,
@@ -294,16 +265,8 @@ export const logout = catchAsync(async (req, res, next) => {
     }
   }
 
-  res.clearCookie("token", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
-  });
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
-  });
+  res.clearCookie("token", getCookieOptions());
+  res.clearCookie("refreshToken", getCookieOptions());
 
   return res.status(200).json({
     success: true,
