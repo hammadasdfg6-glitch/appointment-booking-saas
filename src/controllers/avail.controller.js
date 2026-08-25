@@ -131,10 +131,23 @@ export const slotsGeneration = catchAsync(async(req,res,next) => {
 
   const dayOfWeek = new Date(date).getDay()
 
-  const avail = await Availability.findOne({
+  let avail = await Availability.findOne({
     staffId,
     dayOfWeek
   })
+
+  if (!avail && dayOfWeek >= 1 && dayOfWeek <= 5) {
+    const staffUser = await User.findById(staffId);
+    if (staffUser) {
+      avail = await Availability.create({
+        orgId: staffUser.orgId,
+        staffId,
+        dayOfWeek,
+        startTime: '09:00',
+        endTime: '17:00'
+      });
+    }
+  }
 
   if(!avail){
     return res.status(404).json({
