@@ -372,7 +372,7 @@ export const getProfile = catchAsync(async (req, res, next) => {
 export const updateProfile = catchAsync(async (req, res, next) => {
   const { name, email, oldPassword, newPassword } = req.body || {};
 
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('+passwordHash');
   if (!user) {
     return next(new AppError("User not found", "Not Found", 404));
   }

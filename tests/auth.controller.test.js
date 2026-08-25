@@ -228,7 +228,9 @@ describe('Auth Controller', () => {
         orgId: 'org123',
         save: vi.fn().mockResolvedValue(true),
       };
-      User.findById.mockResolvedValue(mockUser);
+      User.findById.mockReturnValue({
+        select: vi.fn().mockResolvedValue(mockUser),
+      });
       User.findOne.mockResolvedValue(null);
 
       await updateProfile(req, res, next);
@@ -245,6 +247,50 @@ describe('Auth Controller', () => {
       );
     });
 
+    it('should change password successfully when old password matches', async () => {
+      req.user = { _id: 'u1' };
+      req.body = { oldPassword: 'oldPass123', newPassword: 'newPass123' };
+      const mockUser = {
+        _id: 'u1',
+        name: 'Jane',
+        email: 'jane@test.com',
+        role: 'customer',
+        passwordHash: 'hashedOldPass',
+        save: vi.fn().mockResolvedValue(true),
+      };
+      User.findById.mockReturnValue({
+        select: vi.fn().mockResolvedValue(mockUser),
+      });
+      bcrypt.compare.mockResolvedValue(true);
+      bcrypt.hash.mockResolvedValue('hashedNewPass');
+
+      await updateProfile(req, res, next);
+
+      expect(bcrypt.compare).toHaveBeenCalledWith('oldPass123', 'hashedOldPass');
+      expect(mockUser.passwordHash).toBe('hashedNewPass');
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 400 if old password does not match', async () => {
+      req.user = { _id: 'u1' };
+      req.body = { oldPassword: 'wrongPass', newPassword: 'newPass123' };
+      const mockUser = {
+        _id: 'u1',
+        passwordHash: 'hashedOldPass',
+        save: vi.fn(),
+      };
+      User.findById.mockReturnValue({
+        select: vi.fn().mockResolvedValue(mockUser),
+      });
+      bcrypt.compare.mockResolvedValue(false);
+
+      await updateProfile(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(mockUser.save).not.toHaveBeenCalled();
+    });
+
     it('should return 409 if new email is already in use by another user', async () => {
       req.user = { _id: 'u1' };
       req.body = { email: 'alreadytaken@test.com' };
@@ -255,7 +301,9 @@ describe('Auth Controller', () => {
         role: 'customer',
         save: vi.fn(),
       };
-      User.findById.mockResolvedValue(mockUser);
+      User.findById.mockReturnValue({
+        select: vi.fn().mockResolvedValue(mockUser),
+      });
       User.findOne.mockResolvedValue({ _id: 'other_user' });
 
       await updateProfile(req, res, next);
