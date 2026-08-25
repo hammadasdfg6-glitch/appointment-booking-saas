@@ -9,11 +9,10 @@ import redis from "../config/redis.js";
 import crypto from "crypto";
 
 const getCookieOptions = (maxAge) => {
-  const isProd = process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true";
   return {
     httpOnly: true,
-    sameSite: isProd ? "none" : "lax",
-    secure: isProd,
+    sameSite: "none",
+    secure: true,
     ...(maxAge ? { maxAge } : {}),
   };
 };
