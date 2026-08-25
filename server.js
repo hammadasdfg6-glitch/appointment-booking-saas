@@ -1,5 +1,11 @@
-import "dotenv/config"
-import app from "./src/app.js"
+import "dotenv/config";
+import dns from "dns";
+
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
+import app from "./src/app.js";
 import { databaseConnection } from "./src/config/db.js"
 
 async function startdb() {
