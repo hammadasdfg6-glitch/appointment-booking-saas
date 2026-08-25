@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,9 +15,18 @@ import {
   Sunrise,
   Timer,
   AlertCircle,
+  Lock,
+  LogIn,
+  UserPlus,
+  UserCheck,
+  Eye,
+  EyeOff,
+  ShieldAlert,
 } from 'lucide-react';
 import { format, addDays, isBefore, startOfToday, parseISO } from 'date-fns';
 import { toast } from 'sonner';
+
+import { useAuth } from '../../hooks/useAuth';
 
 import { useServices } from '../../hooks/useServices';
 import { useStaff } from '../../hooks/useStaff';
@@ -64,6 +73,19 @@ export function BookingWizardPage() {
 
   // Step 5 2-Minute Hold Timer State (120 seconds)
   const [holdSecondsLeft, setHoldSecondsLeft] = useState(120);
+
+  // Auth & Org Param Hook
+  const { user, isAuthenticated, role, login, registerCustomer, logout } = useAuth();
+  const [searchParams] = useSearchParams();
+  const orgParam = searchParams.get('org');
+
+  // Customer Auth state on Step 5
+  const [authTab, setAuthTab] = useState<'signin' | 'register'>('register');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
 
   // Queries
   const { data: servicesData, isLoading: isLoadingServices } = useServices(1, 100);
@@ -163,9 +185,78 @@ export function BookingWizardPage() {
     setCurrentStep(5);
   };
 
+  const handleCustomerLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!authEmail || !authPassword) {
+      toast.error('Please enter your email and password.');
+      return false;
+    }
+    setIsSubmittingAuth(true);
+    try {
+      await login({
+        email: authEmail,
+        passwordHash: authPassword,
+      });
+      toast.success('Signed in successfully as customer!');
+      return true;
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      return false;
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  const handleCustomerRegister = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!authName || !authEmail || !authPassword) {
+      toast.error('Please fill in all registration fields.');
+      return false;
+    }
+    if (authPassword.length < 4) {
+      toast.error('Password must be at least 4 characters.');
+      return false;
+    }
+    setIsSubmittingAuth(true);
+    try {
+      const targetOrg = orgParam || selectedStaff?.orgId || user?.orgId || 'org';
+      await registerCustomer({
+        name: authName,
+        email: authEmail,
+        passwordHash: authPassword,
+        orgName: targetOrg,
+      });
+      toast.success('Customer account created and signed in!');
+      return true;
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      return false;
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  const handleExitOrCancel = () => {
+    if (role === 'customer') {
+      navigate('/dashboard/customer');
+    } else if (role === 'staff') {
+      navigate('/dashboard/staff');
+    } else if (role === 'owner') {
+      navigate('/dashboard/owner');
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleConfirmOrPay = async () => {
     if (!selectedService?._id || !selectedStaff?._id || !selectedSlot || !selectedDate) {
       toast.error('Please complete all selection steps.');
+      return;
+    }
+
+    // Customer Auth Check
+    if (!isAuthenticated || role !== 'customer') {
+      toast.warning('Please sign into or create your customer account below to continue.');
       return;
     }
 
@@ -252,7 +343,7 @@ export function BookingWizardPage() {
 
         {/* Close Wizard */}
         <button
-          onClick={() => navigate('/dashboard/customer')}
+          onClick={handleExitOrCancel}
           className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           aria-label="Exit booking wizard"
         >
@@ -716,6 +807,297 @@ export function BookingWizardPage() {
               </div>
             </Card>
 
+            {/* Customer Account Authentication Requirement Card */}
+            {isAuthenticated && role === 'customer' ? (
+              <Card padding="md" className="border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center font-bold">
+                      <UserCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-body-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {user?.name}
+                        </span>
+                        <Badge variant="customer">Customer Account</Badge>
+                      </div>
+                      <span className="text-caption text-slate-500 dark:text-slate-400">
+                        {user?.email} • Ready for instant appointment confirmation
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => logout()}
+                    className="text-caption text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
+                  >
+                    Switch Account
+                  </button>
+                </div>
+              </Card>
+            ) : isAuthenticated && role !== 'customer' ? (
+              <Card padding="md" className="border-amber-500/40 bg-amber-50/60 dark:bg-amber-950/30">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-body-sm font-semibold text-slate-900 dark:text-slate-100">
+                        Staff / Owner Session Detected ({user?.name})
+                      </h4>
+                      <p className="text-caption text-slate-600 dark:text-slate-400 mt-0.5">
+                        To maintain separated booking records, appointments must be reserved under a customer account. Please sign in with or register your customer account below:
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Inline Customer Auth for Staff/Owner */}
+                  <div className="pt-2 border-t border-amber-200 dark:border-amber-900/50 space-y-4">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAuthTab('signin')}
+                        className={`px-3 py-1.5 rounded-lg text-body-sm font-medium transition-colors ${
+                          authTab === 'signin'
+                            ? 'bg-brand-600 text-white'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        Sign In as Customer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAuthTab('register')}
+                        className={`px-3 py-1.5 rounded-lg text-body-sm font-medium transition-colors ${
+                          authTab === 'register'
+                            ? 'bg-brand-600 text-white'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        Create Customer Account
+                      </button>
+                    </div>
+
+                    {authTab === 'signin' ? (
+                      <form onSubmit={handleCustomerLogin} className="space-y-3">
+                        <Input
+                          label="Customer Email"
+                          type="email"
+                          placeholder="your.email@example.com"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          required
+                        />
+                        <Input
+                          label="Password"
+                          type={showAuthPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                          rightAddon={
+                            <button
+                              type="button"
+                              onClick={() => setShowAuthPassword(!showAuthPassword)}
+                              className="text-slate-400 hover:text-slate-600"
+                            >
+                              {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          }
+                          required
+                        />
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          className="w-full"
+                          isLoading={isSubmittingAuth}
+                          leftIcon={<LogIn className="w-4 h-4" />}
+                        >
+                          Sign In & Proceed
+                        </Button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleCustomerRegister} className="space-y-3">
+                        <Input
+                          label="Your Full Name"
+                          placeholder="Jane Doe"
+                          value={authName}
+                          onChange={(e) => setAuthName(e.target.value)}
+                          required
+                        />
+                        <Input
+                          label="Your Email"
+                          type="email"
+                          placeholder="jane.doe@example.com"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          required
+                        />
+                        <Input
+                          label="Password"
+                          type={showAuthPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                          rightAddon={
+                            <button
+                              type="button"
+                              onClick={() => setShowAuthPassword(!showAuthPassword)}
+                              className="text-slate-400 hover:text-slate-600"
+                            >
+                              {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          }
+                          required
+                        />
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          className="w-full"
+                          isLoading={isSubmittingAuth}
+                          leftIcon={<UserPlus className="w-4 h-4" />}
+                        >
+                          Create Customer Account & Proceed
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              /* Unauthenticated Visitor: Compulsory Customer Auth Card */
+              <Card padding="lg" className="border-brand-500/30 shadow-md">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-h3 font-bold text-slate-900 dark:text-slate-100">
+                        Account Required to Confirm
+                      </h3>
+                      <p className="text-body-sm text-slate-500 dark:text-slate-400">
+                        Sign into or create your customer account to lock in your appointment.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="flex rounded-xl bg-slate-100 dark:bg-slate-900 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setAuthTab('register')}
+                      className={`flex-1 py-2 text-body-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        authTab === 'register'
+                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Create New Account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthTab('signin')}
+                      className={`flex-1 py-2 text-body-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        authTab === 'signin'
+                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Sign In to Account
+                    </button>
+                  </div>
+
+                  {authTab === 'register' ? (
+                    <form onSubmit={handleCustomerRegister} className="space-y-4 pt-1">
+                      <Input
+                        label="Your Full Name"
+                        placeholder="Jane Doe"
+                        value={authName}
+                        onChange={(e) => setAuthName(e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="Your Email"
+                        type="email"
+                        placeholder="jane.doe@example.com"
+                        value={authEmail}
+                        onChange={(e) => setAuthEmail(e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="Password"
+                        type={showAuthPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        helperText="Minimum 4 characters"
+                        rightAddon={
+                          <button
+                            type="button"
+                            onClick={() => setShowAuthPassword(!showAuthPassword)}
+                            className="text-slate-400 hover:text-slate-600"
+                          >
+                            {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        }
+                        required
+                      />
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="lg"
+                        className="w-full"
+                        isLoading={isSubmittingAuth}
+                        leftIcon={<UserPlus className="w-4 h-4" />}
+                      >
+                        Create Account & Proceed
+                      </Button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleCustomerLogin} className="space-y-4 pt-1">
+                      <Input
+                        label="Email Address"
+                        type="email"
+                        placeholder="your.email@example.com"
+                        value={authEmail}
+                        onChange={(e) => setAuthEmail(e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="Password"
+                        type={showAuthPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        rightAddon={
+                          <button
+                            type="button"
+                            onClick={() => setShowAuthPassword(!showAuthPassword)}
+                            className="text-slate-400 hover:text-slate-600"
+                          >
+                            {showAuthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        }
+                        required
+                      />
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="lg"
+                        className="w-full"
+                        isLoading={isSubmittingAuth}
+                        leftIcon={<LogIn className="w-4 h-4" />}
+                      >
+                        Sign In & Proceed
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              </Card>
+            )}
+
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-4 flex items-center gap-3 text-body-sm text-slate-600 dark:text-slate-400">
               <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
               <span>
@@ -735,7 +1117,7 @@ export function BookingWizardPage() {
           size="lg"
           onClick={() => {
             if (currentStep > 1) setCurrentStep(currentStep - 1);
-            else navigate('/dashboard/customer');
+            else handleExitOrCancel();
           }}
           leftIcon={<ArrowLeft className="w-4 h-4" />}
         >
@@ -749,10 +1131,14 @@ export function BookingWizardPage() {
               size="lg"
               onClick={handleConfirmOrPay}
               isLoading={isProcessingPayment}
-              disabled={isProcessingPayment}
+              disabled={isProcessingPayment || !isAuthenticated || role !== 'customer'}
               leftIcon={selectedService?.price === 0 ? <CheckCircle2 className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
             >
-              {selectedService?.price === 0 ? 'Confirm Booking' : 'Continue to Payment'}
+              {!isAuthenticated || role !== 'customer'
+                ? 'Sign In Above to Confirm'
+                : selectedService?.price === 0
+                ? 'Confirm Booking'
+                : `Continue to Payment (${formatCurrency(selectedService?.price || 0)})`}
             </Button>
           ) : (
             <Button

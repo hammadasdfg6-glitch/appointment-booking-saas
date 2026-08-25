@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { Org } from "../models/org.model.js";
 import jwt from "jsonwebtoken";
@@ -133,7 +134,13 @@ export const registerCustomer = catchAsync(async (req, res, next) => {
 
   const { orgName, name, email, passwordHash, role } = req.body;
 
-  const org = await Org.findOne({ name: orgName });
+  const targetOrg = req.params?.orgId || orgName;
+  const orgQueries = [{ name: targetOrg }, { slug: targetOrg }];
+  if (targetOrg && mongoose.Types.ObjectId.isValid(targetOrg)) {
+    orgQueries.push({ _id: targetOrg });
+  }
+
+  const org = await Org.findOne({ $or: orgQueries });
   if (!org) {
     return next(new AppError("Organization not found", "Not Found", 404));
   }
