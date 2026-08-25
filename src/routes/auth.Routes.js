@@ -4,11 +4,11 @@ import { Authentication, authorize } from "../middlewares/authenticator.js";
 import { tenant } from "../middlewares/tenant.js";
 import { rateLimiter, refreshRateLimiter } from "../middlewares/ratelimiter.js";
 import { validate } from "../middlewares/validator.js"
-import { loginSchema, registerOrgSchema, registerUserSchema, registerCustomerSchema, forgotPasswordSchema, resetPasswordSchema } from "../validations/auth.schema.js"
+import { loginSchema, registerOrgSchema, registerUserSchema, registerCustomerSchema, forgotPasswordSchema, resetPasswordSchema, updateProfileSchema } from "../validations/auth.schema.js"
 const authRouter = express.Router()
 
 authRouter.get("/me", Authentication, getProfile)
-authRouter.patch("/me", Authentication, updateProfile)
+authRouter.patch("/me", Authentication, validate(updateProfileSchema), updateProfile)
 
 authRouter.post("/login", validate(loginSchema), Login)
 authRouter.post("/register", validate(registerCustomerSchema), registerCustomer)

@@ -360,23 +360,60 @@ export const getProfile = catchAsync(async (req, res, next) => {
   return res.status(200).json({
     success: true,
     user: {
+      _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
+      orgId: user.orgId,
     },
   });
 });
 
 export const updateProfile = catchAsync(async (req, res, next) => {
-  const { name, email } = req.body;
+  const { name, email, oldPassword, newPassword } = req.body || {};
 
   const user = await User.findById(req.user._id);
   if (!user) {
     return next(new AppError("User not found", "Not Found", 404));
   }
 
-  if (name) user.name = name;
-  if (email) user.email = email;
+  if (name && typeof name === "string") {
+    user.name = name.trim();
+  }
+
+  if (email && typeof email === "string") {
+    const cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail !== user.email) {
+      const existingUser = await User.findOne({
+        email: cleanEmail,
+        _id: { $ne: user._id },
+      });
+      if (existingUser) {
+        return next(
+          new AppError("Email is already in use by another account", "Conflict", 409)
+        );
+      }
+      user.email = cleanEmail;
+    }
+  }
+
+  if (newPassword) {
+    if (!oldPassword) {
+      return next(
+        new AppError("Current password is required to set a new password", "Bad Request", 400)
+      );
+    }
+    if (newPassword.length < 4) {
+      return next(
+        new AppError("New password must be at least 4 characters", "Bad Request", 400)
+      );
+    }
+    const verifyPassword = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!verifyPassword) {
+      return next(new AppError("Incorrect current password", "Bad Request", 400));
+    }
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+  }
 
   await user.save();
 
@@ -384,9 +421,11 @@ export const updateProfile = catchAsync(async (req, res, next) => {
     success: true,
     message: "Profile updated successfully!",
     user: {
+      _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
+      orgId: user.orgId,
     },
   });
 });

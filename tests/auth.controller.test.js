@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { registerOrg, register, registerCustomer, Login } from '../src/controllers/auth.controller.js';
+import { registerOrg, register, registerCustomer, Login, getProfile, updateProfile } from '../src/controllers/auth.controller.js';
 import { User } from '../src/models/user.model.js';
 import { Org } from '../src/models/org.model.js';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+
+vi.mock('bcrypt', () => ({
+  default: {
+    compare: vi.fn(),
+    hash: vi.fn(),
+  },
+}));
 
 vi.mock('../src/routes/auth.Routes.js', () => {
   return { default: {} }
@@ -36,6 +44,7 @@ vi.mock('../src/models/user.model.js', () => {
   User.prototype.save = vi.fn();
   User.find = vi.fn();
   User.findOne = vi.fn();
+  User.findById = vi.fn();
   User.hashPassword = vi.fn();
   return { User };
 });
@@ -174,6 +183,84 @@ describe('Auth Controller', () => {
       expect(res.cookie).toHaveBeenCalledWith('token', 'mockToken', expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe('getProfile', () => {
+    it('should return 404 if user not found', async () => {
+      req.user = { _id: 'u1' };
+      User.findById.mockResolvedValue(null);
+
+      await getProfile(req, res, next);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('should return user profile', async () => {
+      req.user = { _id: 'u1' };
+      User.findById.mockResolvedValue({
+        _id: 'u1',
+        name: 'Jane',
+        email: 'jane@test.com',
+        role: 'customer',
+        orgId: 'org123',
+      });
+
+      await getProfile(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          user: expect.objectContaining({ name: 'Jane', email: 'jane@test.com' }),
+        })
+      );
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should update name and email successfully', async () => {
+      req.user = { _id: 'u1' };
+      req.body = { name: 'Jane Doe', email: 'janedoe@test.com' };
+      const mockUser = {
+        _id: 'u1',
+        name: 'Jane',
+        email: 'old@test.com',
+        role: 'customer',
+        orgId: 'org123',
+        save: vi.fn().mockResolvedValue(true),
+      };
+      User.findById.mockResolvedValue(mockUser);
+      User.findOne.mockResolvedValue(null);
+
+      await updateProfile(req, res, next);
+
+      expect(mockUser.name).toBe('Jane Doe');
+      expect(mockUser.email).toBe('janedoe@test.com');
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Profile updated successfully!',
+        })
+      );
+    });
+
+    it('should return 409 if new email is already in use by another user', async () => {
+      req.user = { _id: 'u1' };
+      req.body = { email: 'alreadytaken@test.com' };
+      const mockUser = {
+        _id: 'u1',
+        name: 'Jane',
+        email: 'old@test.com',
+        role: 'customer',
+        save: vi.fn(),
+      };
+      User.findById.mockResolvedValue(mockUser);
+      User.findOne.mockResolvedValue({ _id: 'other_user' });
+
+      await updateProfile(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(mockUser.save).not.toHaveBeenCalled();
     });
   });
 });

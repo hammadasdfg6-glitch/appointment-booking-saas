@@ -38,3 +38,10 @@ export const resetPasswordSchema = Joi.object({
     token: Joi.string().required(),
     password: Joi.string().min(4).required()
 })
+
+export const updateProfileSchema = Joi.object({
+    name: Joi.string().min(1).optional(),
+    email: Joi.string().email().optional(),
+    oldPassword: Joi.string().min(4).optional(),
+    newPassword: Joi.string().min(4).optional()
+})
