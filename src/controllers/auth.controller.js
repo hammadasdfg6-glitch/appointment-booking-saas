@@ -19,16 +19,17 @@ const getCookieOptions = (maxAge) => {
 };
 
 export const getStaff = catchAsync(async (req, res, next) => {
-
   const orgId = req.orgId;
-  
-  const staff = await User.find({orgId,role: { $in: ["staff", "owner"] },}).select("-passwordHash");
+
+  const staff = await User.find({
+    orgId,
+    role: { $in: ["staff", "owner"] },
+  }).select("-passwordHash");
 
   return res.status(200).json({ success: true, staff });
 });
 
 export const deleteStaff = catchAsync(async (req, res, next) => {
-
   const orgId = req.orgId;
   const { staffId } = req.params;
 
@@ -39,11 +40,19 @@ export const deleteStaff = catchAsync(async (req, res, next) => {
   const staffMember = await User.findOne({ _id: staffId, orgId });
 
   if (!staffMember) {
-    return next(new AppError("Staff member not found or does not belong to your organization","Not Found",404,),);
+    return next(
+      new AppError(
+        "Staff member not found or does not belong to your organization",
+        "Not Found",
+        404,
+      ),
+    );
   }
 
   if (staffMember.role === "owner") {
-    return next(new AppError("Cannot delete the organization owner", "Forbidden", 403),);
+    return next(
+      new AppError("Cannot delete the organization owner", "Forbidden", 403),
+    );
   }
 
   await User.findByIdAndDelete(staffId);
@@ -89,7 +98,11 @@ export const registerOrg = catchAsync(async (req, res, next) => {
   });
 
   res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
-  res.cookie("refreshToken", refreshToken, getCookieOptions(3 * 60 * 60 * 1000));
+  res.cookie(
+    "refreshToken",
+    refreshToken,
+    getCookieOptions(3 * 60 * 60 * 1000),
+  );
 
   await redis.set(`refreshToken:${_id}`, refreshToken, "EX", 3 * 60 * 60);
 
@@ -152,9 +165,9 @@ export const registerCustomer = catchAsync(async (req, res, next) => {
     email,
     passwordHash: hashedPassword,
     orgId: org._id,
-    role: role || 'customer'
+    role: role || "customer",
   });
-  
+
   await user.save();
 
   await emailJob(email, "Welcome!", "Thanks for joining!");
@@ -166,22 +179,26 @@ export const registerCustomer = catchAsync(async (req, res, next) => {
   const accessToken = await jwt.sign(
     { orgId, _id, name: user.name, email: user.email, role: userRole },
     process.env.JWT_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: "15m" },
   );
-  
+
   const refreshToken = await jwt.sign({ _id }, process.env.JWT_SECRET, {
-    expiresIn: "7d"
+    expiresIn: "7d",
   });
 
   res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
-  res.cookie("refreshToken", refreshToken, getCookieOptions(3 * 60 * 60 * 1000));
+  res.cookie(
+    "refreshToken",
+    refreshToken,
+    getCookieOptions(3 * 60 * 60 * 1000),
+  );
 
   await redis.set(`refreshToken:${_id}`, refreshToken, "EX", 3 * 60 * 60);
 
   return res.status(201).json({
     success: true,
     message: "Registration Successful!",
-    role: userRole
+    role: userRole,
   });
 });
 
@@ -214,14 +231,18 @@ export const Login = catchAsync(async (req, res, next) => {
   });
 
   res.cookie("token", accessToken, getCookieOptions(15 * 60 * 1000));
-  res.cookie("refreshToken", refreshToken, getCookieOptions(3 * 60 * 60 * 1000));
+  res.cookie(
+    "refreshToken",
+    refreshToken,
+    getCookieOptions(3 * 60 * 60 * 1000),
+  );
 
   await redis.set(`refreshToken:${_id}`, refreshToken, "EX", 3 * 60 * 60);
 
   return res.status(200).json({
     success: true,
     message: "logged in......",
-    role: role
+    role: role,
   });
 });
 
@@ -372,7 +393,7 @@ export const getProfile = catchAsync(async (req, res, next) => {
 export const updateProfile = catchAsync(async (req, res, next) => {
   const { name, email, oldPassword, newPassword } = req.body || {};
 
-  const user = await User.findById(req.user._id).select('+passwordHash');
+  const user = await User.findById(req.user._id).select("+passwordHash");
   if (!user) {
     return next(new AppError("User not found", "Not Found", 404));
   }
@@ -390,7 +411,11 @@ export const updateProfile = catchAsync(async (req, res, next) => {
       });
       if (existingUser) {
         return next(
-          new AppError("Email is already in use by another account", "Conflict", 409)
+          new AppError(
+            "Email is already in use by another account",
+            "Conflict",
+            409,
+          ),
         );
       }
       user.email = cleanEmail;
@@ -400,17 +425,27 @@ export const updateProfile = catchAsync(async (req, res, next) => {
   if (newPassword) {
     if (!oldPassword) {
       return next(
-        new AppError("Current password is required to set a new password", "Bad Request", 400)
+        new AppError(
+          "Current password is required to set a new password",
+          "Bad Request",
+          400,
+        ),
       );
     }
     if (newPassword.length < 4) {
       return next(
-        new AppError("New password must be at least 4 characters", "Bad Request", 400)
+        new AppError(
+          "New password must be at least 4 characters",
+          "Bad Request",
+          400,
+        ),
       );
     }
     const verifyPassword = await bcrypt.compare(oldPassword, user.passwordHash);
     if (!verifyPassword) {
-      return next(new AppError("Incorrect current password", "Bad Request", 400));
+      return next(
+        new AppError("Incorrect current password", "Bad Request", 400),
+      );
     }
     user.passwordHash = await bcrypt.hash(newPassword, 10);
   }

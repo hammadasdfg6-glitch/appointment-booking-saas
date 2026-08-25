@@ -61,7 +61,10 @@ export const createBooking = catchAsync(async (req, res, next) => {
       ? item._id.toString() === req.body.slotId.toString()
       : item.startTime === startAt;
 
-    if (isExactMatch && ("available" === item.status || "locked" === item.status)) {
+    if (
+      isExactMatch &&
+      ("available" === item.status || "locked" === item.status)
+    ) {
       return item;
     }
   });
@@ -176,7 +179,7 @@ export const getBookings = catchAsync(async (req, res, next) => {
     return res.status(200).json(JSON.parse(cached));
   }
 
-  console.log("Reached pahse 1")
+  console.log("Reached pahse 1");
 
   const bookings = await Booking.find(dbQuery)
     .populate("customerId", "name email")
@@ -186,8 +189,7 @@ export const getBookings = catchAsync(async (req, res, next) => {
     .skip(skip)
     .limit(limit);
 
-
-    console.log(bookings)
+  console.log(bookings);
   const total = await Booking.countDocuments(dbQuery);
 
   if (0 === bookings.length) {
