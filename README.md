@@ -1,7 +1,10 @@
-# 🗓️ AppointFlow — Multi-Tenant Appointment Booking SaaS
+# 🗓️ AppointFlow — Multi-Tenant Appointment Booking SaaS Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-v5-FF4154?style=flat-square&logo=react-query)](https://tanstack.com/query/latest)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=nodedotjs)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-5.x-lightgrey?style=flat-square&logo=express)](https://expressjs.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb)](https://www.mongodb.com/)
@@ -10,112 +13,175 @@
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout_%26_Webhooks-635BFF?style=flat-square&logo=stripe)](https://stripe.com/)
 [![Vitest](https://img.shields.io/badge/Tests-44_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
 
-A modern, production-ready, full-stack **Multi-Tenant Appointment Scheduling & Booking SaaS Platform**. Built with high performance, concurrency safety, and automated background job processing in mind.
+**AppointFlow** is an enterprise-ready, multi-tenant Appointment Scheduling & Booking SaaS platform. It combines high-concurrency slot reservations with atomic Redis locks, automated BullMQ asynchronous background workers, cryptographically verified Stripe checkout, and a responsive, high-performance React 18 + TypeScript SPA.
 
 ---
 
-## 🌟 Highlights & Features
+## 📑 Table of Contents
+1. [Key Features & Capabilities](#-key-features--capabilities)
+2. [System Architecture](#-system-architecture)
+3. [Tech Stack](#-tech-stack)
+4. [Project Structure](#-project-structure)
+5. [Quick Start & Local Setup](#-quick-start--local-setup)
+6. [Environment Variables](#-environment-variables)
+7. [API Contract & Quirks Matrix](#-api-contract--quirks-matrix)
+8. [Background Queues & Workers](#-background-queues--workers)
+9. [Testing & Build Verification](#-testing--build-verification)
+10. [Production Deployment Guide](#-production-deployment-guide)
+11. [License](#-license)
 
-### 🏢 Multi-Tenant Architecture
-- Complete organization isolation across all data models (`Org`, `User`, `Service`, `Availability`, `Booking`, `Revenue`, `Stats`).
-- Custom organization slugs and sub-paths for dedicated customer booking portals.
+---
 
-### 👥 Role-Based Access Control (RBAC)
-- **👑 Organization Owner (Admin)**: Full control over team members, service offerings, business hours, real-time revenue analytics, and weekly automated reports.
-- **👨‍💼 Staff Members**: Manage personal schedules, view upcoming bookings, and set custom working windows per day of the week.
-- **🙋 Customers**: Discover services, view real-time available time slots, hold and lock slots during checkout, and manage active appointments.
+## 🌟 Key Features & Capabilities
 
-### ⚡ Concurrency & Slot Hold Locking (Zero Double-Bookings)
-- **Redis Hold Locks**: When a customer enters checkout, a 2-minute temporary hold (`hold:<slotId>`) is placed in Redis to prevent simultaneous bookings.
-- **Automatic Hold Release**: If checkout expires or fails, the hold is instantly lifted for other customers.
+### 🏢 1. True Multi-Tenancy
+* **Data Model Isolation**: Strict tenant segregation (`orgId`) enforced across all MongoDB models (`Org`, `User`, `Service`, `Availability`, `Booking`, `Revenue`, `Stats`).
+* **Slug Routing**: Public booking flows support direct slug-based and organization-scoped identifiers (`/book?org=<slug_or_id>`).
+* **Multi-Tier Plans**: Tiered subscription structures (`Free`, `Pro`, `Enterprise`) for tenant organizations.
 
-### 💳 Stripe Checkout & Cryptographic Webhooks
-- Seamless Stripe Checkout Sessions supporting credit cards and digital wallets.
-- Idempotent **Webhook Verification** with cryptographic signatures (`stripe.webhooks.constructEvent`) to automatically generate confirmed bookings and track real-time revenue upon payment completion.
+### 👥 2. Role-Based Access Control (RBAC)
+* **👑 Business Owner (Admin)**:
+  * Master performance analytics (bookings today, projected trends, revenue vs. prior period).
+  * Full CRUD management for service offerings, durations, and pricing.
+  * Team onboarding and staff credential provisioning.
+  * Master bookings ledger with status management and **CSV export**.
+  * 1-Click shareable public booking link generator with instant clipboard copy.
+* **👨‍💼 Staff Providers**:
+  * Dedicated schedule view with **"Today's Agenda"** priority card and 1-click status completion.
+  * Recurring weekly availability configuration (open hours per day of week).
+  * Dynamic date-range slot generator matrix.
+* **🙋 Customers**:
+  * 5-step progressive booking wizard.
+  * Complimentary ($0) direct confirmation or Stripe payment checkout.
+  * Personal booking history with active and past appointment tracking.
+  * 1-Click **"Add to Google Calendar"** and **Apple / Outlook `.ics` download**.
 
-### 📬 BullMQ Background Workers
-- **Email Queue (`email-queue`)**: Asynchronous booking confirmations, cancellations, and scheduled **24-hour appointment reminders**.
-- **Report Queue (`report-queue`)**: Automated weekly cron job computing booking volume and revenue metrics for organization owners.
-- **Cache Warming Queue (`cache-queue`)**: Nightly cron job pre-generating upcoming 7-day slot availability matrices in MongoDB.
+### ⚡ 3. Concurrency Safety & Slot Reservation Locks
+* **Atomic Redis Hold Locks**: During checkout, an atomic 2-minute hold (`hold:<slotId>`) prevents double-bookings under concurrent client traffic.
+* **Live UI Hold Countdown**: Interactive countdown timer badge displays remaining hold time before releasing the lock back into the pool.
+* **Automatic Hold Release**: If the user cancels, abandons, or the checkout session expires, the lock is automatically lifted in Redis.
 
-### 🛡️ Production Security & Performance
-- **HttpOnly JWT Authentication**: Short-lived access tokens (15m) + secure Refresh Tokens (3h) backed by Redis session management.
-- **Rate Limiting**: Multi-tiered Redis rate limiters protecting authentication endpoints and API routes from DDoS and brute-force attacks.
-- **Input Validation**: Strict schema verification with **Joi** on all mutation endpoints.
-- **Interactive Swagger Docs**: Fully interactive API explorer hosted at `/api-docs`.
+### 💳 4. Stripe Checkout & Cryptographic Webhooks
+* Seamless Stripe Hosted Checkout for credit cards, Apple Pay, and Google Pay.
+* Idempotent webhook verification using `stripe.webhooks.constructEvent` with `STRIPE_WEBHOOK_SECRET`.
+* Automatic booking state transition (`pending` $\rightarrow$ `confirmed`) and atomic revenue incrementing upon `checkout.session.completed`.
+
+### 📬 5. BullMQ Asynchronous Job Queues
+* **Email Queue (`email-queue`)**: Asynchronous booking confirmation emails, cancellation notices, and delayed **24-hour appointment reminders**.
+* **Report Queue (`report-queue`)**: Weekly cron job computing weekly revenue and booking summaries for business owners.
+* **Cache Queue (`cache-queue`)**: Nightly cron job warming the upcoming 7-day slot availability cache.
+
+### 🎨 6. Modern Frontend Ergonomics
+* **Dark / Light Theme**: Contrast-tuned design tokens with smooth transitions.
+* **Form Accessibility**: Interactive password visibility toggles (`Eye` / `EyeOff`), focus rings, and inline validation with **React Hook Form + Zod**.
+* **Time-of-Day Slot Bucketing**: Slots automatically bucketed into 🌅 **Morning**, ☀️ **Afternoon**, and 🌙 **Evening** tabs.
+* **Mobile-First Responsive UI**: Full responsive layout with collapsible navigation and touch-optimized action buttons.
 
 ---
 
 ## 📐 System Architecture
 
 ```
-                      ┌────────────────────────────────────────┐
-                      │          Next.js Frontend              │
-                      │  (Customer, Staff & Admin Dashboards)  │
-                      └──────────────────┬─────────────────────┘
-                                         │  /api/* Proxy Rewrite
-                                         ▼
-                      ┌────────────────────────────────────────┐
-                      │          Express Backend API           │
-                      │   (Auth, RBAC, Tenancy, Validations)   │
-                      └──────┬───────────┬───────────┬─────────┘
-                             │           │           │
-           ┌─────────────────┴─┐   ┌─────┴───────┐   └─────────────────┐
-           ▼                   ▼   ▼             ▼                     ▼
-┌────────────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────┐
-│   MongoDB Atlas    │   │  Redis Cloud  │   │    BullMQ     │   │  Stripe   │
-│ (Persistent Data)  │   │ (Locks/Cache) │   │ (Email/Cron)  │   │ (Payments)│
-└────────────────────┘   └───────────────┘   └───────────────┘   └───────────┘
+                                  ┌────────────────────────────────────────┐
+                                  │      React 18 + Vite Frontend SPA      │
+                                  │  (Customer, Staff & Owner Dashboards)  │
+                                  └──────────────────┬─────────────────────┘
+                                                     │  Axios HTTP / Cookie Auth
+                                                     ▼
+                                  ┌────────────────────────────────────────┐
+                                  │          Express Backend API           │
+                                  │   (Auth, RBAC, Tenancy, Validations)   │
+                                  └──────┬───────────┬───────────┬─────────┘
+                                         │           │           │
+                       ┌─────────────────┴─┐   ┌─────┴───────┐   └─────────────────┐
+                       ▼                   ▼   ▼             ▼                     ▼
+            ┌────────────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────┐
+            │   MongoDB Atlas    │   │  Redis Cloud  │   │    BullMQ     │   │  Stripe   │
+            │ (Persistent Data)  │   │ (Locks/Cache) │   │ (Email/Cron)  │   │ (Payments)│
+            └────────────────────┘   └───────────────┘   └───────────────┘   └───────────┘
 ```
+
+---
+
+## 💻 Tech Stack
+
+### Frontend
+| Layer | Technology |
+|---|---|
+| Framework & Build | React 18.3, TypeScript 5.6, Vite 5.4 |
+| Styling & Theme | Tailwind CSS 3.4, clsx, tailwind-merge |
+| State & Caching | TanStack React Query v5 |
+| Forms & Validation | React Hook Form 7, Zod 3.23 |
+| Routing & Icons | React Router DOM 6, Lucide React |
+| Charts & Feedback | Recharts 2.13, Sonner (Toasts) |
+| Date Utilities | date-fns 3.6 |
+
+### Backend
+| Layer | Technology |
+|---|---|
+| Runtime & Framework | Node.js 18+, Express 5.x |
+| Database & ODM | MongoDB Atlas, Mongoose 8.x |
+| Cache & Concurrency | Redis Cloud, ioredis 5.x |
+| Background Queues | BullMQ 5.x |
+| Security & Auth | JSON Web Tokens (JWT), bcryptjs, Helmet, CORS, Joi |
+| Payments | Stripe Node SDK 17.x |
+| Mailer Transport | Nodemailer (SMTP / Gmail) |
+| Testing | Vitest, Supertest (44 tests passing) |
 
 ---
 
 ## 📂 Project Structure
 
 ```
-├── src/                         # Express Backend Source
-│   ├── config/                  # MongoDB & Redis client configurations
-│   ├── controllers/             # Auth, Avail, Bookings, Checkout, Service, Stats
-│   ├── middlewares/             # JWT Authenticator, RBAC, RateLimiter, Tenant, ErrorHandler
-│   ├── models/                  # Mongoose schemas (Org, User, Service, Booking, Revenue, etc.)
-│   ├── queues/                  # BullMQ queues & workers (Email, Cache, Report)
-│   ├── routes/                  # Express REST route definitions
-│   ├── services/                # Nodemailer email transport service
-│   ├── utils/                   # AppError, catchAsync, time calculation utilities
-│   ├── validations/             # Joi validation schemas
-│   ├── app.js                   # Express application setup, security, & middlewares
-│   └── swagger.yaml             # OpenAPI 3.0 API specifications
+.
+├── src/                               # Express Backend Source
+│   ├── config/                        # MongoDB, Redis, and BullMQ client connections
+│   ├── controllers/                   # Auth, Availability, Bookings, Checkout, Services, Stats
+│   ├── middlewares/                   # JWT Auth, RBAC, Tenant isolation, Rate limiters, Error handling
+│   ├── models/                        # Mongoose schemas (Org, User, Service, Booking, Revenue, Stats)
+│   ├── queues/                        # BullMQ queues & worker processors (Email, Cache, Report)
+│   ├── routes/                        # Express REST route definitions
+│   ├── services/                      # Nodemailer SMTP transport service
+│   ├── utils/                         # AppError, catchAsync, slot calculation algorithms
+│   ├── validations/                   # Joi validation schemas
+│   ├── app.js                         # Express application setup & middleware chain
+│   └── swagger.yaml                   # OpenAPI 3.0 API specifications
 │
-├── frontend/                    # Next.js 16 (App Router) Frontend
-│   ├── public/                  # Static assets & SVGs
+├── frontend/                          # Vite + React 18 Frontend
 │   ├── src/
-│   │   ├── app/                 # App router pages & layouts
-│   │   │   ├── book/            # Customer public booking flow
-│   │   │   ├── booking-success/ # Payment confirmation & return page
-│   │   │   ├── dashboard/       # Protected Dashboards (admin, staff, customer)
-│   │   │   ├── login/           # Authentication portal
-│   │   │   └── register/        # Organization onboarding
-│   │   ├── components/          # Reusable UI components & layouts
-│   │   └── utils/               # Fetch API wrapper with error sanitization
-│   ├── middleware.js            # Route protection auth guard
-│   ├── next.config.mjs          # API proxy rewrites
-│   └── vercel.json              # Vercel deployment configuration
+│   │   ├── api/                       # Axios API client instances & endpoints
+│   │   ├── components/                # Reusable UI primitives (Button, Card, Modal, Badge, etc.)
+│   │   ├── contexts/                  # AuthContext and ThemeContext providers
+│   │   ├── features/                  # Role-based feature views (auth, owner, staff, customer, wizard)
+│   │   ├── hooks/                     # TanStack React Query custom hooks
+│   │   ├── lib/                       # Calendar (.ics/Google Cal) & CSV export utilities
+│   │   ├── pages/                     # Route entry pages (Landing, Login, GetStarted, Success, 404)
+│   │   ├── types/                     # TypeScript API & entity declarations
+│   │   ├── App.tsx                    # Route definitions & layout wrappers
+│   │   └── main.tsx                   # React root entry point
+│   ├── package.json                   # Frontend dependencies & scripts
+│   ├── tailwind.config.js             # Tailwind design token configuration
+│   ├── tsconfig.json                  # TypeScript compiler options & path aliases
+│   └── vite.config.ts                 # Vite server & build settings
 │
-├── tests/                       # Automated Vitest test suite (44 tests)
-├── server.js                    # Production HTTP server entry point
-├── .env.example                 # Backend environment variable template
-└── package.json                 # Backend scripts & dependencies
+├── tests/                             # Automated Vitest integration test suite
+├── server.js                          # Production server entry point
+├── .env.example                       # Backend environment template
+├── package.json                       # Backend scripts & dependencies
+└── README.md                          # Main project documentation
 ```
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 🚀 Quick Start & Local Setup
 
 ### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **MongoDB**: Local instance or free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
-- **Redis**: Local instance or free [Redis Cloud](https://redis.io/cloud) instance
-- **Stripe Account**: Free [Stripe](https://stripe.com) account for API keys
+* **Node.js**: `v18.0.0` or higher
+* **MongoDB**: Local MongoDB instance or free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
+* **Redis**: Local Redis instance or free [Redis Cloud](https://redis.io/cloud) instance
+* **Stripe Account**: Free [Stripe Developer Account](https://stripe.com) for test API keys
+
+---
 
 ### 2. Backend Setup
 ```bash
@@ -126,126 +192,202 @@ cd appointment-booking-saas
 # Install backend dependencies
 npm install
 
-# Configure environment variables
+# Create environment file
 cp .env.example .env
 ```
 
-Edit `.env` with your credentials:
-```env
-PORT=5052
-NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
-MONGO_URI=mongodb://localhost:27017/saas
-JWT_SECRET=your_secret_key_here
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_USERNAME=default
-REDIS_PASSWORD=your_redis_password
-FROM=your_email@gmail.com
-PASS=your_gmail_app_password
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-```
+Edit your `.env` file (see [Environment Variables](#-environment-variables) below), then start the backend server:
 
-Start the backend:
 ```bash
-# Start development server with auto-reload
+# Start backend in development mode (with auto-reload)
 npm run dev
 
-# Or run tests
-npm test
+# Or start in production mode
+npm start
 ```
+The backend will launch at `http://localhost:5052` (Swagger docs at `http://localhost:5052/api-docs`).
+
+---
 
 ### 3. Frontend Setup
+In a new terminal window:
+
 ```bash
 cd frontend
 
-# Install dependencies
+# Install frontend dependencies
 npm install
 
-# Configure local environment
-cp .env.example .env.local
-```
-
-Edit `frontend/.env.local`:
-```env
-BACKEND_URL=http://localhost:5052
-```
-
-Start the frontend:
-```bash
+# Start Vite development server
 npm run dev
 ```
 
-Visit **`http://localhost:3000`** in your browser!
+Open your browser and navigate to:
+👉 **`http://localhost:3000`**
 
 ---
 
-## 📡 API Endpoints Overview
+## 🔑 Environment Variables
 
-| Method | Endpoint | Description | Access |
-|:---|:---|:---|:---|
-| `POST` | `/auth/orgs` | Register organization & owner | Public |
-| `POST` | `/auth/login` | User login (returns JWT cookies) | Public |
-| `POST` | `/auth/refresh` | Refresh access token | Public |
-| `GET` | `/auth/me` | Fetch authenticated profile | Customer / Staff / Owner |
-| `GET` | `/service` | List organization services | Authenticated |
-| `POST` | `/service/create` | Create a new service offering | Owner |
-| `GET` | `/availiability/slots` | Fetch real-time available slots | Authenticated |
-| `POST` | `/availiability/generate-slots` | Generate slot matrix for staff | Staff / Owner |
-| `POST` | `/checkout/session` | Create Stripe checkout session & lock slot | Customer / Owner |
-| `GET` | `/checkout/confirm` | Confirm booking after payment | Authenticated |
-| `POST` | `/checkout/webhook` | Stripe cryptographic webhook listener | Stripe Public |
-| `GET` | `/booking` | List filtered bookings | Authenticated |
-| `DELETE`| `/booking/:id` | Cancel an appointment | Customer / Staff / Owner |
-| `GET` | `/stats` | Real-time organization stats | Owner |
-| `GET` | `/stats/advanced` | Revenue & booking analytics | Owner |
+### Backend (`.env`)
+```env
+# Server Configuration
+PORT=5052
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
 
-> 📖 **Interactive Documentation**: Explore and execute requests live at `http://localhost:5052/api-docs`.
+# Database (MongoDB)
+MONGO_URI=mongodb://localhost:27017/appointflow
+# Or Atlas: mongodb+srv://<user>:<password>@cluster.mongodb.net/appointflow
 
----
+# Security & Tokens
+JWT_SECRET=your_super_secret_jwt_key_here_min_32_chars
 
-## 🌐 Production Deployment Guide
+# Cache & Message Broker (Redis)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USERNAME=default
+REDIS_PASSWORD=your_redis_password_if_any
 
-### Deploying the Backend (e.g. Render / Railway / Fly.io)
-1. Create a new **Web Service** and connect this GitHub repository.
-2. Set **Root Directory** to `.` (root).
-3. Set **Build Command**: `npm install` and **Start Command**: `npm start`.
-4. Add all environment variables from `.env.example` (using your MongoDB Atlas and Redis Cloud URLs).
-5. Copy your assigned public URL (e.g. `https://api.yourdomain.com`).
+# Email Notification Transport (Nodemailer SMTP)
+FROM=noreply@appointflow.com
+PASS=your_smtp_or_gmail_app_password
 
-### Deploying the Frontend (Vercel)
-1. Import the repository on [Vercel](https://vercel.com).
-2. Set **Root Directory** to `frontend`.
-3. Add the environment variable:
-   ```env
-   BACKEND_URL=https://api.yourdomain.com
-   ```
-4. Click **Deploy**.
+# Stripe Payments & Webhooks
+STRIPE_SECRET_KEY=sk_test_51...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+### Frontend (`frontend/.env`)
+```env
+# API Gateway URL (defaults to http://localhost:5052 if omitted)
+VITE_API_URL=http://localhost:5052
+```
 
 ---
 
-## 🧪 Testing
+## 📡 API Contract & Quirks Matrix
 
-The platform includes a comprehensive test suite powered by [Vitest](https://vitest.dev/):
+### Authentication & Tenant Endpoints
+| Method | Endpoint | Access | Key Payload Notes |
+|---|---|---|---|
+| `POST` | `/auth/orgs` | Public | Body: `{ name, slug, timezone, ownerName, ownerEmail, password, plan }` *(Note: uses `password`)* |
+| `POST` | `/auth/login` | Public | Body: `{ email, passwordHash }` *(Note: uses `passwordHash`)* |
+| `POST` | `/auth/register` | Public | Body: `{ name, email, passwordHash, orgName }` *(Customer registration)* |
+| `POST` | `/auth/orgs/:orgId/staff` | Owner | Body: `{ name, email, passwordHash, role: "staff" }` |
+| `POST` | `/auth/reset-password` | Public | Body: `{ email, password }` |
+| `GET` | `/auth/me` | Authenticated | Returns authenticated user profile |
+| `GET` | `/auth/staff` | Authenticated | Returns users in org *(Client filters `role === 'staff'`)* |
+| `POST` | `/auth/logout` | Authenticated | Clears auth cookies and invalidates Redis session |
+
+### Services Endpoints
+| Method | Endpoint | Access | Key Payload Notes |
+|---|---|---|---|
+| `GET` | `/service` | Authenticated | Lists all services for tenant organization |
+| `POST` | `/service/create` | Owner | Body: `{ name, description, durationMinutes, price, active }` |
+| `PATCH`| `/service/:name` | Owner | Body: `{ name, description, durationMinutes, price, active }` |
+| `DELETE`|`/service/:name` | Owner | Deactivates service |
+
+### Availability & Slots
+| Method | Endpoint | Access | Key Payload Notes |
+|---|---|---|---|
+| `GET` | `/availiability/slots` | Authenticated | Query: `?staffId=&date=YYYY-MM-DD` *(Returns 404 on empty slots, handled gracefully)* |
+| `POST`| `/availiability/` | Staff/Owner | Body: `{ weeklySchedule: [{ dayOfWeek, isWorking, startTime, endTime, breakStart, breakEnd }] }` |
+| `POST`| `/availiability/generate-slots` | Staff/Owner | Body: `{ staffId, startDate, endDate, slotDuration }` |
+
+### Checkout & Bookings
+| Method | Endpoint | Access | Key Payload Notes |
+|---|---|---|---|
+| `POST` | `/checkout/session` | Customer/Owner | Body: `{ serviceId, staffId, slotId, startAt, date }` *(Places 2-min Redis hold)* |
+| `GET`  | `/checkout/confirm` | Authenticated | Query: `?session_id=` *(Confirms Stripe transaction)* |
+| `POST` | `/checkout/webhook` | Stripe Public | Raw body + `stripe-signature` header |
+| `POST` | `/booking` | Customer/Owner | Body: `{ serviceId, staffId, startAt, date }` *(Direct confirmation for free services)* |
+| `GET`  | `/booking` | Authenticated | Query: `?page=1&limit=10&status=&date=&staffId=` |
+| `PATCH`| `/booking/:id/status` | Staff/Owner | Body: `{ status: "pending" \| "confirmed" \| "completed" \| "cancelled" }` |
+| `DELETE`|`/booking/:id` | Authenticated | Cancels appointment and releases slot lock |
+
+---
+
+## 📬 Background Queues & Workers
+
+BullMQ workers run concurrently with the Express server:
+
+```
+[BullMQ] Initializing queues...
+[BullMQ] ✓ Email Queue Worker online
+[BullMQ] ✓ Report Queue Worker online (Cron: 0 9 * * 1)
+[BullMQ] ✓ Cache Queue Worker online (Cron: 0 0 * * *)
+```
+
+* **Email Worker**: Listens to `email-queue`. Renders HTML emails for confirmations, updates, and delayed 24-hour appointment reminders.
+* **Weekly Report Worker**: Cron triggers every Monday at 09:00 AM UTC (`0 9 * * 1`), calculates total bookings and gross revenue per organization, and emails a digest to owners.
+* **Cache Warming Worker**: Cron triggers nightly at 12:00 AM UTC (`0 0 * * *`), pre-calculating and saving availability matrices for the upcoming 7 days.
+
+---
+
+## 🧪 Testing & Build Verification
+
+### Backend Automated Test Suite
+Run the 44-test integration test suite powered by [Vitest](https://vitest.dev/):
 
 ```bash
 npm test
 ```
 
 ```text
-✓ tests/auth.controller.test.js (10 tests)
-✓ tests/stats.controller.test.js (3 tests)
-✓ tests/bookings.controller.test.js (7 tests)
-✓ tests/avail.controller.test.js (12 tests)
-✓ tests/checkout.controller.test.js (2 tests)
-✓ tests/service.controller.test.js (10 tests)
+ ✓ tests/auth.controller.test.js (10 tests)
+ ✓ tests/stats.controller.test.js (3 tests)
+ ✓ tests/bookings.controller.test.js (7 tests)
+ ✓ tests/avail.controller.test.js (12 tests)
+ ✓ tests/checkout.controller.test.js (2 tests)
+ ✓ tests/service.controller.test.js (10 tests)
 
-Test Files  6 passed (6)
-     Tests  44 passed (44)
+ Test Files  6 passed (6)
+      Tests  44 passed (44)
+```
+
+### Frontend TypeScript & Production Build
+Validate TypeScript types and build minified production bundles:
+
+```bash
+cd frontend
+npm run build
+```
+
+```text
+vite v5.4.21 building for production...
+✓ 2841 modules transformed.
+dist/index.html                     0.96 kB │ gzip:   0.53 kB
+dist/assets/index-BIltSOni.css     39.74 kB │ gzip:   7.12 kB
+dist/assets/index-DHMGwmhn.js   1,031.64 kB │ gzip: 290.91 kB
+✓ built in 12.72s
 ```
 
 ---
 
+## 🌐 Production Deployment Guide
+
+### 1. Deploy Backend (Railway / Render / Fly.io / AWS ECS)
+1. Link your GitHub repository to your cloud hosting platform.
+2. Set **Build Command**: `npm install`
+3. Set **Start Command**: `npm start`
+4. Set environment variables from `.env.example` using production MongoDB Atlas and Redis Cloud credentials.
+5. In Stripe Dashboard, configure the webhook endpoint URL to:
+   `https://api.yourdomain.com/checkout/webhook`
+   and copy the signing secret to `STRIPE_WEBHOOK_SECRET`.
+
+### 2. Deploy Frontend (Vercel / Netlify / Cloudflare Pages)
+1. Import the repository and set the **Root Directory** to `frontend`.
+2. Set **Build Command**: `npm run build`
+3. Set **Output Directory**: `dist`
+4. Configure Single-Page Application (SPA) rewrite rule (e.g. `/*` $\rightarrow$ `/index.html`).
+5. Set environment variable:
+   ```env
+   VITE_API_URL=https://api.yourdomain.com
+   ```
+6. Deploy!
+
+---
+
 ## 📄 License
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
