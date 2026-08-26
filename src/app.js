@@ -9,6 +9,7 @@ import checkoutRouter from "./routes/checkout.Routes.js"
 import "./queues/emailQueue.js"
 import { scheduleCacheWarming } from "./queues/cacheQueue.js"
 import { scheduleWeeklyReports } from "./queues/reportQueue.js";
+import { staffStatsReset } from "./queues/staffStatsQueue.js";
 import cookieParser from "cookie-parser"
 import cors from "cors"
 import helmet from "helmet"
@@ -83,5 +84,6 @@ app.use(errorHandler)
 
 scheduleCacheWarming()
 scheduleWeeklyReports()
+staffStatsReset()
 
 export default app;

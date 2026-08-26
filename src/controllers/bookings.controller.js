@@ -106,6 +106,16 @@ export const createBooking = catchAsync(async (req, res, next) => {
   await booking.save();
   await chkslot.save();
 
+if(date === (new Date().toISOString().split("T")[0])){
+  const key = `staff-stats:${staffId}`
+  const cacheKey = await redis.get(key)
+  if(cacheKey){
+  const cachedStats = JSON.parse(cacheKey)
+  cachedStats.totalBookings = await Booking.countDocuments({staffId,date})
+  await redis.set(key,JSON.stringify(cachedStats))
+  }
+}
+
   // Deleting old booking cached data
   const keys = await redis.keys("bookings:*");
   if (0 < keys.length) await redis.del(keys);
@@ -264,6 +274,17 @@ export const deleteBooking = catchAsync(async (req, res, next) => {
   await chkslot.save();
   await booking.save();
 
+  if(booking.date === (new Date().toISOString().split("T")[0])){
+  const key = `staff-stats:${booking.staffId}`
+  const cacheKey = await redis.get(key)
+  if(cacheKey){
+    const cachedStats = JSON.parse(cacheKey)
+    cachedStats.cancelledBookings = await Booking.countDocuments({staffId: booking.staffId,date: booking.date,status: 'cancelled'})
+    cachedStats.pendingBookings = cachedStats.pendingBookings -1;
+    await redis.set(key,JSON.stringify(cachedStats))
+    }
+  }
+
   // Delete all booking cache entries
   const keys = await redis.keys("bookings:*");
   if (0 < keys.length) await redis.del(keys);
@@ -315,6 +336,19 @@ export const setStatus = catchAsync(async (req, res, next) => {
   if (0 < keys.length) await redis.del(keys);
   const bookingKeys = await redis.keys("booking:*");
   if (0 < bookingKeys.length) await redis.del(bookingKeys);
+
+  if(booking.date === (new Date().toISOString().split("T")[0])){
+  const key = `staff-stats:${booking.staffId}`
+  const cacheKey = await redis.get(key)
+  if(cacheKey){
+  const cachedStats = JSON.parse(cacheKey)
+  cachedStats.cancelledBookings = await Booking.countDocuments({staffId: booking.staffId,date: booking.date,status: 'cancelled'})
+  cachedStats.completedBookings = await Booking.countDocuments({staffId: booking.staffId,date: booking.date, status: 'completed'})
+  cachedStats.totalBookings = await Booking.countDocuments({staffId: booking.staffId, date: booking.date})
+  cachedStats.pendingBookings = cachedStats.totalBookings - (cachedStats.cancelledBookings + cachedStats.completedBookings)
+  await redis.set(key,JSON.stringify(cachedStats))
+  }
+  }
 
   const customer = await User.findOne({ _id: booking.customerId }, "email");
   if (customer)

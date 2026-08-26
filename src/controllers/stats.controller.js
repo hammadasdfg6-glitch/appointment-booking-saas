@@ -142,3 +142,38 @@ export const getAdvancedStats = catchAsync(async (req, res, next) => {
         }
     });
 });
+
+export const todayStaffStats = catchAsync( async (req,res,next) => {
+    const key = `staff-stats:${req.user._id}`
+    const cacheKey = await redis.get(key)
+    if(cacheKey){
+        const todayBookingData = JSON.parse(cacheKey)
+        return res.status(200).json({
+            message: `Today's Booking Data`,
+            success: true,
+            todayBookingData
+        })
+    }
+
+    const currentDate = new Date().toISOString().split("T")[0]
+    const [totalBookings, cancelledBookings, completedBookings] = await Promise.all([
+        Booking.countDocuments({ staffId:req.user._id, date: currentDate }),
+        Booking.countDocuments({ staffId:req.user._id, date: currentDate, status: 'cancelled' }),
+        Booking.countDocuments({ staffId:req.user._id, date: currentDate, status: 'completed' }),
+    ]);
+    
+    const todayBookingData = {
+        totalBookings,
+        cancelledBookings,
+        completedBookings,
+        pendingBookings: Math.max(0, totalBookings - (completedBookings + cancelledBookings))
+    }
+
+    await redis.set(key, JSON.stringify(todayBookingData), 'EX', 86400)
+    return res.status(200).json({
+        message: `Today's Booking Data`,
+        success: true,
+        todayBookingData
+    })
+
+})
