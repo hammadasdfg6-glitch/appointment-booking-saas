@@ -11,7 +11,8 @@
 [![Redis](https://img.shields.io/badge/Redis-Cloud-DC382D?style=flat-square&logo=redis)](https://redis.io/)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Background_Jobs-red?style=flat-square)](https://bullmq.io/)
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout_%26_Webhooks-635BFF?style=flat-square&logo=stripe)](https://stripe.com/)
-[![Vitest](https://img.shields.io/badge/Tests-44_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Resend](https://img.shields.io/badge/Resend-HTTPS_Email_API-black?style=flat-square&logo=resend)](https://resend.com/)
+[![Vitest](https://img.shields.io/badge/Tests-50_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
 
 **AppointFlow** is an enterprise-ready, multi-tenant Appointment Scheduling & Booking SaaS platform. It combines high-concurrency slot reservations with atomic Redis locks, automated BullMQ asynchronous background workers, cryptographically verified Stripe checkout, and a responsive, high-performance React 18 + TypeScript SPA.
 
@@ -81,25 +82,18 @@
 
 ## 📐 System Architecture
 
-```
-                                  ┌────────────────────────────────────────┐
-                                  │      React 18 + Vite Frontend SPA      │
-                                  │  (Customer, Staff & Owner Dashboards)  │
-                                  └──────────────────┬─────────────────────┘
-                                                     │  Axios HTTP / Cookie Auth
-                                                     ▼
-                                  ┌────────────────────────────────────────┐
-                                  │          Express Backend API           │
-                                  │   (Auth, RBAC, Tenancy, Validations)   │
-                                  └──────┬───────────┬───────────┬─────────┘
-                                         │           │           │
-                       ┌─────────────────┴─┐   ┌─────┴───────┐   └─────────────────┐
-                       ▼                   ▼   ▼             ▼                     ▼
-            ┌────────────────────┐   ┌───────────────┐   ┌───────────────┐   ┌───────────┐
-            │   MongoDB Atlas    │   │  Redis Cloud  │   │    BullMQ     │   │  Stripe   │
-            │ (Persistent Data)  │   │ (Locks/Cache) │   │ (Email/Cron)  │   │ (Payments)│
-            └────────────────────┘   └───────────────┘   └───────────────┘   └───────────┘
-```
+<div align="center">
+  <img src="./docs/architecture.svg" alt="AppointFlow Multi-Tenant Cloud Architecture" width="800" />
+</div>
+
+The architecture leverages a decoupled, multi-tier cloud infrastructure:
+1. **Client / Presentation Layer (Vercel)**: React 18 + Vite SPA serving role-based portals (Customer, Staff, Owner) and a 5-step guided booking wizard with an inline authentication gate.
+2. **API & Application Layer (Railway)**: Express 5.x REST API orchestrator handling JWT authentication, strict tenant isolation (`orgId`), and centralized error handling.
+3. **Async Job Processing (BullMQ)**: Worker engine managing transactional email delivery (Resend HTTPS API) and automated weekly revenue/booking analytics cron jobs.
+4. **Data & Cache Layer**:
+   * **Redis Cloud**: Distributed lock manager ensuring atomic 2-minute slot reservations (`SET NX EX 120`), BullMQ queue states, and rate limiting counters.
+   * **MongoDB Atlas**: Multi-tenant document database with indexed schemas for organizations, users, services, bookings, availability, and revenue metrics.
+5. **External Cloud Services**: Stripe Hosted Checkout sessions with cryptographic webhook listeners and Resend for transactional email dispatch.
 
 ---
 
@@ -125,8 +119,8 @@
 | Background Queues | BullMQ 5.x |
 | Security & Auth | JSON Web Tokens (JWT), bcryptjs, Helmet, CORS, Joi |
 | Payments | Stripe Node SDK 17.x |
-| Mailer Transport | Nodemailer (SMTP / Gmail) |
-| Testing | Vitest, Supertest (44 tests passing) |
+| Mailer Transport | Resend (HTTPS API) with Nodemailer SMTP Fallback |
+| Testing | Vitest, Supertest (50 tests passing) |
 
 ---
 
