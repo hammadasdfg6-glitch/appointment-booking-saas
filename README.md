@@ -12,7 +12,7 @@
 [![BullMQ](https://img.shields.io/badge/BullMQ-Background_Jobs-red?style=flat-square)](https://bullmq.io/)
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout_%26_Webhooks-635BFF?style=flat-square&logo=stripe)](https://stripe.com/)
 [![Resend](https://img.shields.io/badge/Resend-HTTPS_Email_API-black?style=flat-square&logo=resend)](https://resend.com/)
-[![Vitest](https://img.shields.io/badge/Tests-50_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-57_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
 
 **AppointFlow** is an enterprise-ready, multi-tenant Appointment Scheduling & Booking SaaS platform. It combines high-concurrency slot reservations with atomic Redis locks, automated BullMQ asynchronous background workers, cryptographically verified Stripe checkout, and a responsive, high-performance React 18 + TypeScript SPA.
 
@@ -120,7 +120,7 @@ The architecture leverages a decoupled, multi-tier cloud infrastructure:
 | Security & Auth | JSON Web Tokens (JWT), bcryptjs, Helmet, CORS, Joi |
 | Payments | Stripe Node SDK 17.x |
 | Mailer Transport | Resend (HTTPS API) with Nodemailer SMTP Fallback |
-| Testing | Vitest, Supertest (50 tests passing) |
+| Testing | Vitest, Supertest (57 tests passing) |
 
 ---
 

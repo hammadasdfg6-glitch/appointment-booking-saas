@@ -60,6 +60,16 @@ vi.mock('../src/models/slots.model.js', () => {
   return { Slots };
 });
 
+vi.mock('../src/config/redis.js', () => ({
+  default: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    keys: vi.fn().mockResolvedValue([]),
+    on: vi.fn()
+  }
+}));
+
 vi.mock('ioredis', () => {
   const MockRedis = function() {
     this.get = vi.fn();
@@ -204,5 +214,46 @@ describe('Bookings Controller', () => {
       expect(saveBookingMock).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
     });
+
+    it('should update staff stats in Redis when booking status is updated for today', async () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      req.params.id = 'book123';
+      req.body = { status: 'completed' };
+
+      const saveBookingMock = vi.fn();
+      Booking.findOne.mockResolvedValue({
+        staffId: 'staff123',
+        date: todayStr,
+        customerId: 'cust123',
+        save: saveBookingMock
+      });
+
+      const redis = (await import('../src/config/redis.js')).default;
+      redis.get.mockResolvedValueOnce(JSON.stringify({
+        totalBookings: 2,
+        completedBookings: 0,
+        cancelledBookings: 0,
+        pendingBookings: 2
+      }));
+
+      Booking.countDocuments
+        .mockResolvedValueOnce(0) // cancelled
+        .mockResolvedValueOnce(1) // completed
+        .mockResolvedValueOnce(2); // total
+
+      await setStatus(req, res, next);
+
+      expect(redis.set).toHaveBeenCalledWith(
+        'staff-stats:staff123',
+        JSON.stringify({
+          totalBookings: 2,
+          completedBookings: 1,
+          cancelledBookings: 0,
+          pendingBookings: 1
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
   });
 });
+

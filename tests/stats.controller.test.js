@@ -142,4 +142,69 @@ describe('Stats Controller', () => {
       }))
     })
   })
+
+  describe('todayStaffStats', () => {
+    it('should return cached daily staff stats if available', async () => {
+      const { todayStaffStats } = await import('../src/controllers/stats.controller.js')
+      req.user = { _id: 'staff123' }
+
+      const cachedStats = {
+        totalBookings: 5,
+        cancelledBookings: 1,
+        completedBookings: 2,
+        pendingBookings: 2
+      }
+      redis.get.mockResolvedValueOnce(JSON.stringify(cachedStats))
+
+      await todayStaffStats(req, res, next)
+
+      expect(redis.get).toHaveBeenCalledWith('staff-stats:staff123')
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.json).toHaveBeenCalledWith({
+        message: `Today's Booking Data`,
+        success: true,
+        todayBookingData: cachedStats
+      })
+      expect(Booking.countDocuments).not.toHaveBeenCalled()
+    })
+
+    it('should calculate stats from DB and cache in Redis on cache miss', async () => {
+      const { todayStaffStats } = await import('../src/controllers/stats.controller.js')
+      req.user = { _id: 'staff123' }
+
+      redis.get.mockResolvedValueOnce(null)
+      Booking.countDocuments
+        .mockResolvedValueOnce(6) // total
+        .mockResolvedValueOnce(1) // cancelled
+        .mockResolvedValueOnce(2) // completed
+
+      await todayStaffStats(req, res, next)
+
+      expect(redis.get).toHaveBeenCalledWith('staff-stats:staff123')
+      expect(Booking.countDocuments).toHaveBeenCalledTimes(3)
+      expect(redis.set).toHaveBeenCalledWith(
+        'staff-stats:staff123',
+        JSON.stringify({
+          totalBookings: 6,
+          cancelledBookings: 1,
+          completedBookings: 2,
+          pendingBookings: 3
+        }),
+        'EX',
+        86400
+      )
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.json).toHaveBeenCalledWith({
+        message: `Today's Booking Data`,
+        success: true,
+        todayBookingData: {
+          totalBookings: 6,
+          cancelledBookings: 1,
+          completedBookings: 2,
+          pendingBookings: 3
+        }
+      })
+    })
+  })
 })
+
