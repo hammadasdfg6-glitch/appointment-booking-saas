@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, User as UserIcon, CheckCircle2, XCircle, AlertCircle, Sparkles, Check } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfWeek, startOfMonth } from 'date-fns';
 import { toast } from 'sonner';
 import { useBookings, useUpdateBookingStatus, useCancelBooking } from '../../hooks/useBookings';
 import { useAuth } from '../../hooks/useAuth';
@@ -35,7 +35,28 @@ export function StaffDashboard() {
   const cancelBookingMutation = useCancelBooking();
 
   const bookings = bookingsData?.bookings || [];
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+
+  // Current Calendar Week (Sunday to Today)
+  const startOfWeekStr = format(startOfWeek(today, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+
+  // Current Calendar Month (1st of Month to Today)
+  const startOfMonthStr = format(startOfMonth(today), 'yyyy-MM-dd');
+
+  const filteredBookings = bookings.filter((b) => {
+    if (timeframe === 'today') {
+      return b.date === todayStr;
+    }
+    if (timeframe === 'weekly') {
+      return b.date >= startOfWeekStr && b.date <= todayStr;
+    }
+    if (timeframe === 'monthly') {
+      return b.date >= startOfMonthStr && b.date <= todayStr;
+    }
+    return true;
+  });
+
   const todayBookings = bookings.filter((b) => b.date === todayStr && b.status !== 'cancelled');
 
 
@@ -234,21 +255,31 @@ export function StaffDashboard() {
         </Card>
       )}
 
+      {/* Bookings Section Header */}
+      <div className="flex items-center justify-between pt-2">
+        <h2 className="text-h3 font-semibold text-slate-900 dark:text-slate-100">
+          {timeframe === 'today' ? "Today's Appointments" : timeframe === 'weekly' ? "This Week's Appointments" : "This Month's Appointments"}
+        </h2>
+        <span className="text-caption text-slate-500 font-medium">
+          Showing {filteredBookings.length} {filteredBookings.length === 1 ? 'appointment' : 'appointments'}
+        </span>
+      </div>
+
       {/* Bookings List */}
       {isLoading ? (
         <div className="grid md:grid-cols-2 gap-4">
           <SkeletonCard />
           <SkeletonCard />
         </div>
-      ) : bookings.length === 0 ? (
+      ) : filteredBookings.length === 0 ? (
         <EmptyState
           icon={Calendar}
-          title="No appointments scheduled"
-          description="You do not have any appointments assigned to you currently."
+          title={`No appointments for ${timeframe === 'today' ? 'today' : timeframe === 'weekly' ? 'this week' : 'this month'}`}
+          description={`You do not have any appointments assigned to you for ${timeframe === 'today' ? 'today' : timeframe === 'weekly' ? 'the past 7 days' : 'the past 30 days'}.`}
         />
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
-          {bookings.map((booking) => {
+          {filteredBookings.map((booking) => {
             const customer =
               typeof booking.customerId === 'object'
                 ? booking.customerId

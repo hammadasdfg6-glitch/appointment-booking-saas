@@ -162,36 +162,6 @@ export const todayStaffStats = catchAsync( async (req,res) => {
         Booking.countDocuments({ staffId:req.user._id, date: currentDate, status: 'completed' }),
     ]);
 
-    const weeklyStats = JSON.parse(await redis.get(`weekly-stats:${req.user._id}`))
-    if(weeklyStats){
-            weeklyStats.totalBookings += totalBookings
-            weeklyStats.completedBookings += completedBookings
-            weeklyStats.cancelledBookings += cancelledBookings
-            await redis.set(`weekly-stats:${req.user._id}`,JSON.stringify(weeklyStats))
-    }
-    if(!weeklyStats){
-            const weekStats = {}
-            weekStats.totalBookings = totalBookings
-            weekStats.completedBookings = completedBookings
-            weekStats.cancelledBookings = cancelledBookings
-            await redis.set(`weekly-stats:${req.user._id}`,JSON.stringify(weekStats))
-    }
-    
-    const monthlyStats = JSON.parse(await redis.get(`monthly-stats:${req.user._id}`))
-    if(monthlyStats){
-            monthlyStats.totalBookings += totalBookings
-            monthlyStats.completedBookings += completedBookings
-            monthlyStats.cancelledBookings += cancelledBookings
-            await redis.set(`monthly-stats:${req.user._id}`,JSON.stringify(monthlyStats))
-    }
-    if(!monthlyStats){
-            const monthStats = {}
-            monthStats.totalBookings = totalBookings
-            monthStats.completedBookings = completedBookings
-            monthStats.cancelledBookings = cancelledBookings
-            await redis.set(`monthly-stats:${req.user._id}`,JSON.stringify(monthStats))
-    }
-
     const todayBookingData = {
         totalBookings,
         cancelledBookings,
@@ -221,15 +191,15 @@ export const weeklyStaffStats = catchAsync( async (req,res,next) => {
     }
 
     const today = new Date();
-    const lastWeek = new Date();
-    lastWeek.setDate(today.getDate() - 7);
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
     const todayStr = today.toISOString().split("T")[0];
-    const lastWeekStr = lastWeek.toISOString().split("T")[0];
+    const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
 
     const [totalBookings, cancelledBookings, completedBookings] = await Promise.all([
-        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastWeekStr, $lte: todayStr } }),
-        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastWeekStr, $lte: todayStr }, status: 'cancelled' }),
-        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastWeekStr, $lte: todayStr }, status: 'completed' }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: startOfWeekStr, $lte: todayStr } }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: startOfWeekStr, $lte: todayStr }, status: 'cancelled' }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: startOfWeekStr, $lte: todayStr }, status: 'completed' }),
     ]);
     const weeklyStats = {
         totalBookings,
@@ -261,15 +231,14 @@ export const monthlyStaffStats = catchAsync( async (req,res,next) => {
     }
 
     const today = new Date();
-    const lastMonth = new Date();
-    lastMonth.setDate(today.getDate() - 30);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const todayStr = today.toISOString().split("T")[0];
-    const lastMonthStr = lastMonth.toISOString().split("T")[0];
+    const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
 
     const [totalBookings, cancelledBookings, completedBookings] = await Promise.all([
-        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastMonthStr, $lte: todayStr } }),
-        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastMonthStr, $lte: todayStr }, status: 'cancelled' }),
-        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastMonthStr, $lte: todayStr }, status: 'completed' }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: startOfMonthStr, $lte: todayStr } }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: startOfMonthStr, $lte: todayStr }, status: 'cancelled' }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: startOfMonthStr, $lte: todayStr }, status: 'completed' }),
     ]);
     const monthlyStats = {
         totalBookings,

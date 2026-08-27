@@ -74,9 +74,15 @@ describe('Staff Stats Queues & Workers', () => {
 
     // Booking counts
     Booking.countDocuments
-      .mockResolvedValueOnce(5) // total
-      .mockResolvedValueOnce(2) // completed
-      .mockResolvedValueOnce(1); // cancelled
+      .mockResolvedValueOnce(5) // today total
+      .mockResolvedValueOnce(1) // today cancelled
+      .mockResolvedValueOnce(2) // today completed
+      .mockResolvedValueOnce(10) // week total
+      .mockResolvedValueOnce(2) // week cancelled
+      .mockResolvedValueOnce(4) // week completed
+      .mockResolvedValueOnce(15) // month total
+      .mockResolvedValueOnce(3) // month cancelled
+      .mockResolvedValueOnce(6); // month completed
 
     await capturedWorkers['staff-stats']({});
 
@@ -85,9 +91,9 @@ describe('Staff Stats Queues & Workers', () => {
       'staff-stats:staff_1',
       JSON.stringify({
         totalBookings: 5,
-        pendingBookings: 5,
-        completedBookings: 2,
         cancelledBookings: 1,
+        completedBookings: 2,
+        pendingBookings: 2,
       })
     );
   });

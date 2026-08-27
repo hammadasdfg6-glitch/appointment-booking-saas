@@ -42,25 +42,56 @@ const staffStatsWorker = new Worker(`staff-stats`,async(job) => {
         await redis.del(cacheKey)
         }
         const currentDate = new Date().toISOString().split("T")[0];
-        const todayStats = {}
-        todayStats.totalBookings = await Booking.countDocuments({staffId: Staff[i]._id,date: currentDate})
-        todayStats.pendingBookings = todayStats.totalBookings
-        todayStats.completedBookings = await Booking.countDocuments({staffId: Staff[i]._id,date: currentDate, status: 'completed'})
-        todayStats.cancelledBookings = await Booking.countDocuments({staffId: Staff[i]._id,date: currentDate, status: 'cancelled'})
+        const [todayTotal, todayCancelled, todayCompleted] = await Promise.all([
+            Booking.countDocuments({staffId: Staff[i]._id, date: currentDate}),
+            Booking.countDocuments({staffId: Staff[i]._id, date: currentDate, status: 'cancelled'}),
+            Booking.countDocuments({staffId: Staff[i]._id, date: currentDate, status: 'completed'})
+        ]);
+        const todayStats = {
+            totalBookings: todayTotal,
+            cancelledBookings: todayCancelled,
+            completedBookings: todayCompleted,
+            pendingBookings: Math.max(0, todayTotal - (todayCancelled + todayCompleted))
+        };
         await redis.set(cacheKey, JSON.stringify(todayStats))
         if(!weeklyStats){
-            const weekStats = {}
-            weekStats.totalBookings = todayStats.totalBookings
-            weekStats.completedBookings = todayStats.completedBookings
-            weekStats.cancelledBookings = todayStats.cancelledBookings
-            await redis.set(`weekly-stats:${Staff[i]._id}`,JSON.stringify(weekStats))            
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
+
+            const [wTotal, wCancelled, wCompleted] = await Promise.all([
+                Booking.countDocuments({ staffId: Staff[i]._id, date: { $gte: startOfWeekStr, $lte: currentDate } }),
+                Booking.countDocuments({ staffId: Staff[i]._id, date: { $gte: startOfWeekStr, $lte: currentDate }, status: 'cancelled' }),
+                Booking.countDocuments({ staffId: Staff[i]._id, date: { $gte: startOfWeekStr, $lte: currentDate }, status: 'completed' }),
+            ]);
+
+            const weekStats = {
+                totalBookings: wTotal,
+                cancelledBookings: wCancelled,
+                completedBookings: wCompleted,
+                pendingBookings: Math.max(0, wTotal - (wCancelled + wCompleted))
+            };
+            await redis.set(`weekly-stats:${Staff[i]._id}`, JSON.stringify(weekStats));            
         }
         if(!monthlyStats){
-            const monthStats = {}
-            monthStats.totalBookings = todayStats.totalBookings
-            monthStats.completedBookings = todayStats.completedBookings
-            monthStats.cancelledBookings = todayStats.cancelledBookings
-            await redis.set(`monthly-stats:${Staff[i]._id}`,JSON.stringify(monthStats)) 
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
+
+            const [mTotal, mCancelled, mCompleted] = await Promise.all([
+                Booking.countDocuments({ staffId: Staff[i]._id, date: { $gte: startOfMonthStr, $lte: currentDate } }),
+                Booking.countDocuments({ staffId: Staff[i]._id, date: { $gte: startOfMonthStr, $lte: currentDate }, status: 'cancelled' }),
+                Booking.countDocuments({ staffId: Staff[i]._id, date: { $gte: startOfMonthStr, $lte: currentDate }, status: 'completed' }),
+            ]);
+
+            const monthStats = {
+                totalBookings: mTotal,
+                cancelledBookings: mCancelled,
+                completedBookings: mCompleted,
+                pendingBookings: Math.max(0, mTotal - (mCancelled + mCompleted))
+            };
+            await redis.set(`monthly-stats:${Staff[i]._id}`, JSON.stringify(monthStats)); 
         }
     }
     
