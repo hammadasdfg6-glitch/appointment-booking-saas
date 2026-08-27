@@ -5,7 +5,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:5052
     description: Local development server
 
 components:
@@ -20,6 +20,81 @@ paths:
   # ---------------------------------------------------------
   # AUTHENTICATION & ORGANIZATIONS
   # ---------------------------------------------------------
+  /auth/me:
+    get:
+      tags: [Auth & Orgs]
+      summary: Get currently authenticated user profile
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: User profile details
+        401:
+          description: Unauthorized
+    patch:
+      tags: [Auth & Orgs]
+      summary: Update currently authenticated user profile
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+      responses:
+        200:
+          description: Profile updated successfully
+        400:
+          description: Validation error
+
+  /auth/register:
+    post:
+      tags: [Auth & Orgs]
+      summary: Register a new Customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                passwordHash: { type: string }
+                orgName: { type: string }
+      responses:
+        201:
+          description: Registration Successful
+
+  /auth/staff:
+    get:
+      tags: [Auth & Orgs]
+      summary: Get list of staff members for the organization
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: List of staff members
+
+  /auth/staff/{staffId}:
+    delete:
+      tags: [Auth & Orgs]
+      summary: Delete a staff member (Owner Only)
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Staff member deleted successfully
+
   /auth/orgs:
     post:
       tags: [Auth & Orgs]
@@ -430,7 +505,7 @@ paths:
   /stats:
     get:
       tags: [Stats]
-      summary: Get full analytics dashboard stats
+      summary: Get full analytics dashboard stats (Owner Only)
       security:
         - cookieAuth: []
       responses:
@@ -440,9 +515,81 @@ paths:
   /stats/advanced:
     get:
       tags: [Stats]
-      summary: Get advanced analytics and performance metrics
+      summary: Get advanced analytics and performance metrics (Owner Only)
       security:
         - cookieAuth: []
       responses:
         200:
           description: Returns revenue and booking comparisons
+
+  /stats/todayStats:
+    get:
+      tags: [Stats]
+      summary: Get real-time daily booking statistics for staff
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Returns today's total, completed, cancelled, and pending bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  todayBookingData:
+                    type: object
+                    properties:
+                      totalBookings: { type: integer }
+                      completedBookings: { type: integer }
+                      cancelledBookings: { type: integer }
+                      pendingBookings: { type: integer }
+
+  /stats/weeklyStats:
+    get:
+      tags: [Stats]
+      summary: Get current calendar week booking statistics for staff
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Returns weekly total, completed, cancelled, and pending bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  weeklyStats:
+                    type: object
+                    properties:
+                      totalBookings: { type: integer }
+                      completedBookings: { type: integer }
+                      cancelledBookings: { type: integer }
+                      pendingBookings: { type: integer }
+
+  /stats/monthlyStats:
+    get:
+      tags: [Stats]
+      summary: Get current calendar month booking statistics for staff
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Returns monthly total, completed, cancelled, and pending bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  monthlyStats:
+                    type: object
+                    properties:
+                      totalBookings: { type: integer }
+                      completedBookings: { type: integer }
+                      cancelledBookings: { type: integer }
+                      pendingBookings: { type: integer }

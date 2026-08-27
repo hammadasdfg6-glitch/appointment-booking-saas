@@ -12,7 +12,7 @@
 [![BullMQ](https://img.shields.io/badge/BullMQ-Background_Jobs-red?style=flat-square)](https://bullmq.io/)
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout_%26_Webhooks-635BFF?style=flat-square&logo=stripe)](https://stripe.com/)
 [![Resend](https://img.shields.io/badge/Resend-HTTPS_Email_API-black?style=flat-square&logo=resend)](https://resend.com/)
-[![Vitest](https://img.shields.io/badge/Tests-57_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-62_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
 
 **AppointFlow** is an enterprise-ready, multi-tenant Appointment Scheduling & Booking SaaS platform. It combines high-concurrency slot reservations with atomic Redis locks, automated BullMQ asynchronous background workers, cryptographically verified Stripe checkout, and a responsive, high-performance React 18 + TypeScript SPA.
 
@@ -271,7 +271,9 @@ VITE_API_URL=http://localhost:5052
 | `POST` | `/auth/orgs/:orgId/staff` | Owner | Body: `{ name, email, passwordHash, role: "staff" }` |
 | `POST` | `/auth/reset-password` | Public | Body: `{ email, password }` |
 | `GET` | `/auth/me` | Authenticated | Returns authenticated user profile |
-| `GET` | `/auth/staff` | Authenticated | Returns users in org *(Client filters `role === 'staff'`)* |
+| `PATCH`| `/auth/me` | Authenticated | Body: `{ name, email }` *(Update profile information)* |
+| `GET` | `/auth/staff` | Authenticated | Returns staff members in tenant org |
+| `DELETE`|`/auth/staff/:staffId` | Owner | Removes staff member and disassociates availability |
 | `POST` | `/auth/logout` | Authenticated | Clears auth cookies and invalidates Redis session |
 
 ### Services Endpoints
@@ -288,56 +290,75 @@ VITE_API_URL=http://localhost:5052
 | `GET` | `/availiability/slots` | Authenticated | Query: `?staffId=&date=YYYY-MM-DD` *(Returns 404 on empty slots, handled gracefully)* |
 | `POST`| `/availiability/` | Staff/Owner | Body: `{ weeklySchedule: [{ dayOfWeek, isWorking, startTime, endTime, breakStart, breakEnd }] }` |
 | `POST`| `/availiability/generate-slots` | Staff/Owner | Body: `{ staffId, startDate, endDate, slotDuration }` |
+| `GET` | `/availiability/:staffId` | Authenticated | Retrieves availability rules for specified staff |
+| `PATCH`| `/availiability/:staffId` | Staff/Owner | Updates availability rules for specified staff |
+| `DELETE`|`/availiability/:staffId` | Staff/Owner | Deletes availability rules for specified staff |
 
 ### Checkout & Bookings
 | Method | Endpoint | Access | Key Payload Notes |
 |---|---|---|---|
 | `POST` | `/checkout/session` | Customer/Owner | Body: `{ serviceId, staffId, slotId, startAt, date }` *(Places 2-min Redis hold)* |
-| `GET`  | `/checkout/confirm` | Authenticated | Query: `?session_id=` *(Confirms Stripe transaction)* |
-| `POST` | `/checkout/webhook` | Stripe Public | Raw body + `stripe-signature` header |
+| `GET`  | `/checkout/confirm` | Authenticated | Query: `?session_id=` *(Confirms Stripe transaction or $0 booking)* |
+| `POST` | `/checkout/webhook` | Stripe Public | Raw body + `stripe-signature` header *(Idempotent webhook listener)* |
 | `POST` | `/booking` | Customer/Owner | Body: `{ serviceId, staffId, startAt, date }` *(Direct confirmation for free services)* |
 | `GET`  | `/booking` | Authenticated | Query: `?page=1&limit=10&status=&date=&staffId=` |
-| `PATCH`| `/booking/:id/status` | Staff/Owner | Body: `{ status: "pending" \| "confirmed" \| "completed" \| "cancelled" }` |
-| `DELETE`|`/booking/:id` | Authenticated | Cancels appointment and releases slot lock |
+| `PATCH`| `/booking/:id/status` | Staff/Owner | Body: `{ status: "pending" \| "confirmed" \| "completed" \| "cancelled" }` *(Auto-updates live Redis stats)* |
+| `DELETE`|`/booking/:id` | Authenticated | Cancels appointment, updates Redis metrics, and releases slot lock |
+
+### Analytics & Stats Endpoints
+| Method | Endpoint | Access | Key Payload Notes |
+|---|---|---|---|
+| `GET`  | `/stats` | Owner | Master organization metrics (revenue, total bookings, active services) |
+| `GET`  | `/stats/advanced` | Owner | Advanced monthly revenue & booking comparative analytics |
+| `GET`  | `/stats/todayStats` | Staff/Owner | Today's live booking metrics (`total`, `completed`, `cancelled`, `pending`) |
+| `GET`  | `/stats/weeklyStats` | Staff/Owner | Current Calendar Week metrics (Sunday $\rightarrow$ Today) |
+| `GET`  | `/stats/monthlyStats`| Staff/Owner | Current Calendar Month metrics (1st of month $\rightarrow$ Today) |
 
 ---
 
 ## 📬 Background Queues & Workers
 
-BullMQ workers run concurrently with the Express server:
+BullMQ workers run concurrently with the Express server for reliable, fault-tolerant background execution:
 
 ```
 [BullMQ] Initializing queues...
 [BullMQ] ✓ Email Queue Worker online
 [BullMQ] ✓ Report Queue Worker online (Cron: 0 9 * * 1)
 [BullMQ] ✓ Cache Queue Worker online (Cron: 0 0 * * *)
+[BullMQ] ✓ Staff Stats Worker online (Cron: 0 0 * * *)
+[BullMQ] ✓ Weekly Stats Worker online (Cron: 0 11 * * 0)
+[BullMQ] ✓ Monthly Stats Worker online (Cron: 30 23 * * *)
 ```
 
-* **Email Worker**: Listens to `email-queue`. Renders HTML emails for confirmations, updates, and delayed 24-hour appointment reminders.
-* **Weekly Report Worker**: Cron triggers every Monday at 09:00 AM UTC (`0 9 * * 1`), calculates total bookings and gross revenue per organization, and emails a digest to owners.
-* **Cache Warming Worker**: Cron triggers nightly at 12:00 AM UTC (`0 0 * * *`), pre-calculating and saving availability matrices for the upcoming 7 days.
+* **Email Worker (`email-queue`)**: Renders HTML emails for confirmations, cancellations, and delayed 24-hour appointment reminders.
+* **Weekly Report Worker (`report-queue`)**: Cron triggers every Monday at 09:00 AM UTC (`0 9 * * 1`), calculating weekly gross revenue per org and dispatching email digests.
+* **Cache Warming Worker (`cache-queue`)**: Nightly cron (`0 0 * * *`) pre-calculates and warms availability matrices for the upcoming 7 days.
+* **Staff Daily Stats Rollover (`staff-stats`)**: Nightly cron (`0 0 * * *`) rolls over completed daily stats into weekly/monthly Redis accumulators.
+* **Weekly Stats Reset (`weekly-stats`)**: Triggers every Sunday (`0 11 * * 0`) to cleanly reset calendar weekly counters for the new week.
+* **Monthly Stats Reset (`monthly-stats`)**: Triggers on the last day of each month (`30 23 * * *`) to reset calendar monthly metrics.
 
 ---
 
 ## 🧪 Testing & Build Verification
 
 ### Backend Automated Test Suite
-Run the 44-test integration test suite powered by [Vitest](https://vitest.dev/):
+Run the 62-test integration and unit test suite powered by [Vitest](https://vitest.dev/):
 
 ```bash
 npm test
 ```
 
 ```text
- ✓ tests/auth.controller.test.js (10 tests)
- ✓ tests/stats.controller.test.js (3 tests)
- ✓ tests/bookings.controller.test.js (7 tests)
+ ✓ tests/staffStatsQueue.test.js (5 tests)
+ ✓ tests/bookings.controller.test.js (8 tests)
+ ✓ tests/stats.controller.test.js (9 tests)
+ ✓ tests/auth.controller.test.js (16 tests)
  ✓ tests/avail.controller.test.js (12 tests)
  ✓ tests/checkout.controller.test.js (2 tests)
  ✓ tests/service.controller.test.js (10 tests)
 
- Test Files  6 passed (6)
-      Tests  44 passed (44)
+ Test Files  7 passed (7)
+      Tests  62 passed (62)
 ```
 
 ### Frontend TypeScript & Production Build
