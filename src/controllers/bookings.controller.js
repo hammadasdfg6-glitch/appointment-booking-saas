@@ -114,6 +114,24 @@ if(date === (new Date().toISOString().split("T")[0])){
   cachedStats.totalBookings = await Booking.countDocuments({staffId,date})
   await redis.set(key,JSON.stringify(cachedStats))
   }
+
+  const weeklyKey = `weekly-stats:${staffId}`
+  const weeklyCache = await redis.get(weeklyKey)
+  if(weeklyCache){
+    const cachedWeekly = JSON.parse(weeklyCache)
+    cachedWeekly.totalBookings = (cachedWeekly.totalBookings || 0) + 1
+    cachedWeekly.pendingBookings = (cachedWeekly.pendingBookings || 0) + 1
+    await redis.set(weeklyKey, JSON.stringify(cachedWeekly))
+  }
+
+  const monthlyKey = `monthly-stats:${staffId}`
+  const monthlyCache = await redis.get(monthlyKey)
+  if(monthlyCache){
+    const cachedMonthly = JSON.parse(monthlyCache)
+    cachedMonthly.totalBookings = (cachedMonthly.totalBookings || 0) + 1
+    cachedMonthly.pendingBookings = (cachedMonthly.pendingBookings || 0) + 1
+    await redis.set(monthlyKey, JSON.stringify(cachedMonthly))
+  }
 }
 
   // Deleting old booking cached data
@@ -283,6 +301,24 @@ export const deleteBooking = catchAsync(async (req, res, next) => {
     cachedStats.pendingBookings = cachedStats.pendingBookings -1;
     await redis.set(key,JSON.stringify(cachedStats))
     }
+
+  const weeklyKey = `weekly-stats:${booking.staffId}`
+  const weeklyCache = await redis.get(weeklyKey)
+  if(weeklyCache){
+    const cachedWeekly = JSON.parse(weeklyCache)
+    cachedWeekly.cancelledBookings = (cachedWeekly.cancelledBookings || 0) + 1
+    cachedWeekly.pendingBookings = Math.max(0, (cachedWeekly.pendingBookings || 0) - 1)
+    await redis.set(weeklyKey, JSON.stringify(cachedWeekly))
+  }
+
+  const monthlyKey = `monthly-stats:${booking.staffId}`
+  const monthlyCache = await redis.get(monthlyKey)
+  if(monthlyCache){
+    const cachedMonthly = JSON.parse(monthlyCache)
+    cachedMonthly.cancelledBookings = (cachedMonthly.cancelledBookings || 0) + 1
+    cachedMonthly.pendingBookings = Math.max(0, (cachedMonthly.pendingBookings || 0) - 1)
+    await redis.set(monthlyKey, JSON.stringify(cachedMonthly))
+  }
   }
 
   // Delete all booking cache entries
@@ -347,6 +383,36 @@ export const setStatus = catchAsync(async (req, res, next) => {
   cachedStats.totalBookings = await Booking.countDocuments({staffId: booking.staffId, date: booking.date})
   cachedStats.pendingBookings = cachedStats.totalBookings - (cachedStats.cancelledBookings + cachedStats.completedBookings)
   await redis.set(key,JSON.stringify(cachedStats))
+  }
+
+  const weeklyKey = `weekly-stats:${booking.staffId}`
+  const weeklyCache = await redis.get(weeklyKey)
+  if(weeklyCache){
+    const cachedWeekly = JSON.parse(weeklyCache)
+    if(status === 'completed'){
+      cachedWeekly.completedBookings = (cachedWeekly.completedBookings || 0) + 1
+      cachedWeekly.pendingBookings = Math.max(0, (cachedWeekly.pendingBookings || 0) - 1)
+    }
+    if(status === 'cancelled'){
+      cachedWeekly.cancelledBookings = (cachedWeekly.cancelledBookings || 0) + 1
+      cachedWeekly.pendingBookings = Math.max(0, (cachedWeekly.pendingBookings || 0) - 1)
+    }
+    await redis.set(weeklyKey, JSON.stringify(cachedWeekly))
+  }
+
+  const monthlyKey = `monthly-stats:${booking.staffId}`
+  const monthlyCache = await redis.get(monthlyKey)
+  if(monthlyCache){
+    const cachedMonthly = JSON.parse(monthlyCache)
+    if(status === 'completed'){
+      cachedMonthly.completedBookings = (cachedMonthly.completedBookings || 0) + 1
+      cachedMonthly.pendingBookings = Math.max(0, (cachedMonthly.pendingBookings || 0) - 1)
+    }
+    if(status === 'cancelled'){
+      cachedMonthly.cancelledBookings = (cachedMonthly.cancelledBookings || 0) + 1
+      cachedMonthly.pendingBookings = Math.max(0, (cachedMonthly.pendingBookings || 0) - 1)
+    }
+    await redis.set(monthlyKey, JSON.stringify(cachedMonthly))
   }
   }
 

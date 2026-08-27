@@ -121,3 +121,29 @@ export interface SlotsResponse {
   total: number;
   slots: SlotItem[];
 }
+
+export interface StaffPeriodStats {
+  totalBookings: number;
+  cancelledBookings: number;
+  completedBookings: number;
+  pendingBookings: number;
+}
+
+export interface TodayStaffStatsResponse {
+  success: boolean;
+  message: string;
+  todayBookingData: StaffPeriodStats;
+}
+
+export interface WeeklyStaffStatsResponse {
+  success: boolean;
+  message: string;
+  weeklyStats: StaffPeriodStats;
+}
+
+export interface MonthlyStaffStatsResponse {
+  success: boolean;
+  message: string;
+  monthlyStats: StaffPeriodStats;
+}
+

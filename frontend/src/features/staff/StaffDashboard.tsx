@@ -5,6 +5,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useBookings, useUpdateBookingStatus, useCancelBooking } from '../../hooks/useBookings';
 import { useAuth } from '../../hooks/useAuth';
+import { useTodayStaffStats, useWeeklyStaffStats, useMonthlyStaffStats } from '../../hooks/useStats';
+import { StatCard } from '../../components/ui/StatCard';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -19,6 +21,14 @@ import { getErrorMessage } from '../../api/client';
 export function StaffDashboard() {
   const { user } = useAuth();
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
+  const [timeframe, setTimeframe] = useState<'today' | 'weekly' | 'monthly'>('today');
+
+  const { data: todayStats, isLoading: isLoadingToday } = useTodayStaffStats();
+  const { data: weeklyStats, isLoading: isLoadingWeekly } = useWeeklyStaffStats();
+  const { data: monthlyStats, isLoading: isLoadingMonthly } = useMonthlyStaffStats();
+
+  const activeStats = timeframe === 'today' ? todayStats : timeframe === 'weekly' ? weeklyStats : monthlyStats;
+  const isLoadingStats = timeframe === 'today' ? isLoadingToday : timeframe === 'weekly' ? isLoadingWeekly : isLoadingMonthly;
 
   const { data: bookingsData, isLoading } = useBookings({ limit: 50 });
   const updateStatusMutation = useUpdateBookingStatus();
@@ -27,6 +37,7 @@ export function StaffDashboard() {
   const bookings = bookingsData?.bookings || [];
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayBookings = bookings.filter((b) => b.date === todayStr && b.status !== 'cancelled');
+
 
   const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
     try {
@@ -60,7 +71,7 @@ export function StaffDashboard() {
             My Schedule
           </h1>
           <p className="text-body-sm text-slate-500 dark:text-slate-400 mt-1">
-            View your assigned appointments and update customer booking statuses.
+            View your assigned appointments, real-time analytics, and update statuses.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
@@ -85,6 +96,85 @@ export function StaffDashboard() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      {/* Staff Analytics Overview */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h2 className="text-h3 font-semibold text-slate-900 dark:text-slate-100">
+            Performance Overview
+          </h2>
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200/80 dark:border-slate-700/80 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setTimeframe('today')}
+              className={`px-3 py-1 text-caption font-medium rounded-md transition-all ${
+                timeframe === 'today'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeframe('weekly')}
+              className={`px-3 py-1 text-caption font-medium rounded-md transition-all ${
+                timeframe === 'weekly'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              This Week
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeframe('monthly')}
+              className={`px-3 py-1 text-caption font-medium rounded-md transition-all ${
+                timeframe === 'monthly'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              This Month
+            </button>
+          </div>
+        </div>
+
+        {isLoadingStats ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label={timeframe === 'today' ? "Today's Bookings" : timeframe === 'weekly' ? 'Weekly Bookings' : 'Monthly Bookings'}
+              value={activeStats?.totalBookings ?? 0}
+              icon={Calendar}
+            />
+            <StatCard
+              label="Completed"
+              value={activeStats?.completedBookings ?? 0}
+              icon={CheckCircle2}
+              className="border-emerald-100 dark:border-emerald-950/40"
+            />
+            <StatCard
+              label="Pending / Upcoming"
+              value={activeStats?.pendingBookings ?? 0}
+              icon={Clock}
+              className="border-amber-100 dark:border-amber-950/40"
+            />
+            <StatCard
+              label="Cancelled"
+              value={activeStats?.cancelledBookings ?? 0}
+              icon={XCircle}
+              className="border-rose-100 dark:border-rose-950/40"
+            />
+          </div>
+        )}
       </div>
 
       {/* Today's Agenda Banner */}
