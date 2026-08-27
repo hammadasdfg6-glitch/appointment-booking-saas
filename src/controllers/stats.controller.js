@@ -143,7 +143,7 @@ export const getAdvancedStats = catchAsync(async (req, res, next) => {
     });
 });
 
-export const todayStaffStats = catchAsync( async (req,res,next) => {
+export const todayStaffStats = catchAsync( async (req,res) => {
     const key = `staff-stats:${req.user._id}`
     const cacheKey = await redis.get(key)
     if(cacheKey){
@@ -161,7 +161,37 @@ export const todayStaffStats = catchAsync( async (req,res,next) => {
         Booking.countDocuments({ staffId:req.user._id, date: currentDate, status: 'cancelled' }),
         Booking.countDocuments({ staffId:req.user._id, date: currentDate, status: 'completed' }),
     ]);
+
+    const weeklyStats = JSON.parse(await redis.get(`weekly-stats:${req.user._id}`))
+    if(weeklyStats){
+            weeklyStats.totalBookings += totalBookings
+            weeklyStats.completedBookings += completedBookings
+            weeklyStats.cancelledBookings += cancelledBookings
+            await redis.set(`weekly-stats:${req.user._id}`,JSON.stringify(weeklyStats))
+    }
+    if(!weeklyStats){
+            const weekStats = {}
+            weekStats.totalBookings = totalBookings
+            weekStats.completedBookings = completedBookings
+            weekStats.cancelledBookings = cancelledBookings
+            await redis.set(`weekly-stats:${req.user._id}`,JSON.stringify(weekStats))
+    }
     
+    const monthlyStats = JSON.parse(await redis.get(`monthly-stats:${req.user._id}`))
+    if(monthlyStats){
+            monthlyStats.totalBookings += totalBookings
+            monthlyStats.completedBookings += completedBookings
+            monthlyStats.cancelledBookings += cancelledBookings
+            await redis.set(`monthly-stats:${req.user._id}`,JSON.stringify(monthlyStats))
+    }
+    if(!monthlyStats){
+            const monthStats = {}
+            monthStats.totalBookings = totalBookings
+            monthStats.completedBookings = completedBookings
+            monthStats.cancelledBookings = cancelledBookings
+            await redis.set(`monthly-stats:${req.user._id}`,JSON.stringify(monthStats))
+    }
+
     const todayBookingData = {
         totalBookings,
         cancelledBookings,
@@ -174,6 +204,86 @@ export const todayStaffStats = catchAsync( async (req,res,next) => {
         message: `Today's Booking Data`,
         success: true,
         todayBookingData
+    })
+
+})
+
+export const weeklyStaffStats = catchAsync( async (req,res,next) => {
+    const key = `weekly-stats:${req.user._id}`
+    const cached = await redis.get(key)
+    if(cached){
+        const weeklyStats = JSON.parse(cached)
+        return res.status(200).json({
+            message: `Weekly Booking Data`,
+            success: true,
+            weeklyStats
+        })
+    }
+
+    const today = new Date();
+    const lastWeek = new Date();
+    lastWeek.setDate(today.getDate() - 7);
+    const todayStr = today.toISOString().split("T")[0];
+    const lastWeekStr = lastWeek.toISOString().split("T")[0];
+
+    const [totalBookings, cancelledBookings, completedBookings] = await Promise.all([
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastWeekStr, $lte: todayStr } }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastWeekStr, $lte: todayStr }, status: 'cancelled' }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastWeekStr, $lte: todayStr }, status: 'completed' }),
+    ]);
+    const weeklyStats = {
+        totalBookings,
+        cancelledBookings,
+        completedBookings,
+        pendingBookings: Math.max(0, totalBookings - (completedBookings + cancelledBookings))
+    };
+
+    await redis.set(key, JSON.stringify(weeklyStats))
+
+    return res.status(200).json({
+        message: `Weekly Booking Data`,
+        success: true,
+        weeklyStats
+    })
+
+})
+
+export const monthlyStaffStats = catchAsync( async (req,res,next) => {
+    const key = `monthly-stats:${req.user._id}`
+    const cached = await redis.get(key)
+    if(cached){
+        const monthlyStats = JSON.parse(cached)
+        return res.status(200).json({
+            message: `monthly Booking Data`,
+            success: true,
+            monthlyStats
+        })
+    }
+
+    const today = new Date();
+    const lastMonth = new Date();
+    lastMonth.setDate(today.getDate() - 30);
+    const todayStr = today.toISOString().split("T")[0];
+    const lastMonthStr = lastMonth.toISOString().split("T")[0];
+
+    const [totalBookings, cancelledBookings, completedBookings] = await Promise.all([
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastMonthStr, $lte: todayStr } }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastMonthStr, $lte: todayStr }, status: 'cancelled' }),
+        Booking.countDocuments({ staffId: req.user._id, date: { $gte: lastMonthStr, $lte: todayStr }, status: 'completed' }),
+    ]);
+    const monthlyStats = {
+        totalBookings,
+        cancelledBookings,
+        completedBookings,
+        pendingBookings: Math.max(0, totalBookings - (completedBookings + cancelledBookings))
+    };
+
+    await redis.set(key, JSON.stringify(monthlyStats))
+
+    return res.status(200).json({
+        message: `monthly Booking Data`,
+        success: true,
+        monthlyStats
     })
 
 })

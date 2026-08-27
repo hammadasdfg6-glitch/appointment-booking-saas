@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-let capturedWorkerProcessor = null;
+const capturedWorkers = {};
 const mockQueueAdd = vi.fn();
 
 vi.mock('bullmq', () => {
@@ -14,7 +14,7 @@ vi.mock('bullmq', () => {
       this.name = name;
       this.processor = processor;
       this.opts = opts;
-      capturedWorkerProcessor = processor;
+      capturedWorkers[name] = processor;
     }),
   };
 });
@@ -23,7 +23,7 @@ vi.mock('../src/config/redis.js', () => ({
   default: {
     del: vi.fn().mockResolvedValue(1),
     set: vi.fn().mockResolvedValue('OK'),
-    get: vi.fn(),
+    get: vi.fn().mockResolvedValue(null),
   },
 }));
 
@@ -39,75 +39,71 @@ vi.mock('../src/models/booking.model.js', () => ({
   },
 }));
 
-describe('Staff Stats Queue & Worker', () => {
+describe('Staff Stats Queues & Workers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should initialize queue and register worker processor', async () => {
-    const { staffStatsReset } = await import('../src/queues/staffStatsQueue.js');
+  it('should initialize queues and register worker processors', async () => {
+    const { staffStatsReset, weeklyStatsReset, monthlyStatsReset } = await import('../src/queues/staffStatsQueue.js');
     expect(staffStatsReset).toBeDefined();
-    expect(capturedWorkerProcessor).toBeTypeOf('function');
+    expect(weeklyStatsReset).toBeDefined();
+    expect(monthlyStatsReset).toBeDefined();
+    expect(capturedWorkers['staff-stats']).toBeTypeOf('function');
+    expect(capturedWorkers['weekly-stats']).toBeTypeOf('function');
+    expect(capturedWorkers['monthly-stats']).toBeTypeOf('function');
   });
 
-  it('should schedule daily midnight repeat cron job in staffStatsReset', async () => {
-    const { staffStatsReset } = await import('../src/queues/staffStatsQueue.js');
+  it('should schedule repeat cron jobs in reset functions', async () => {
+    const { staffStatsReset, weeklyStatsReset, monthlyStatsReset } = await import('../src/queues/staffStatsQueue.js');
     await staffStatsReset();
+    await weeklyStatsReset();
+    await monthlyStatsReset();
 
-    expect(mockQueueAdd).toHaveBeenCalledWith(
-      'staff-stats',
-      {},
-      {
-        repeat: {
-          cron: '0 0 * * *',
-        },
-      }
-    );
+    expect(mockQueueAdd).toHaveBeenCalledWith('staff-stats', {}, { repeat: { cron: '0 0 * * *' } });
+    expect(mockQueueAdd).toHaveBeenCalledWith('weekly-stats', {}, { repeat: { cron: '0 11 * * 0' } });
+    expect(mockQueueAdd).toHaveBeenCalledWith('monthly-stats', {}, { repeat: { cron: '30 23 * * *' } });
   });
 
-  it('should calculate and cache today stats for all staff members when worker runs', async () => {
+  it('should calculate and cache today stats for staff members in staffStatsWorker', async () => {
     const { User } = await import('../src/models/user.model.js');
     const { Booking } = await import('../src/models/booking.model.js');
     const redis = (await import('../src/config/redis.js')).default;
 
-    User.find.mockResolvedValueOnce([
-      { _id: 'staff_1' },
-      { _id: 'staff_2' },
-    ]);
+    User.find.mockResolvedValueOnce([{ _id: 'staff_1' }]);
 
-    // staff_1 counts
+    // Booking counts
     Booking.countDocuments
       .mockResolvedValueOnce(5) // total
-      .mockResolvedValueOnce(1) // cancelled
-      // staff_2 counts
-      .mockResolvedValueOnce(3) // total
-      .mockResolvedValueOnce(0); // cancelled
+      .mockResolvedValueOnce(2) // completed
+      .mockResolvedValueOnce(1); // cancelled
 
-    await capturedWorkerProcessor({});
+    await capturedWorkers['staff-stats']({});
 
     expect(User.find).toHaveBeenCalledWith({ role: 'staff' });
-    expect(redis.del).toHaveBeenCalledWith('staff-stats:staff_1');
-    expect(redis.del).toHaveBeenCalledWith('staff-stats:staff_2');
-
     expect(redis.set).toHaveBeenCalledWith(
       'staff-stats:staff_1',
       JSON.stringify({
         totalBookings: 5,
         pendingBookings: 5,
-        completedBookings: 0,
+        completedBookings: 2,
         cancelledBookings: 1,
       })
     );
+  });
 
-    expect(redis.set).toHaveBeenCalledWith(
-      'staff-stats:staff_2',
-      JSON.stringify({
-        totalBookings: 3,
-        pendingBookings: 3,
-        completedBookings: 0,
-        cancelledBookings: 0,
-      })
-    );
+  it('should reset weekly stats for all staff members in weeklyWorker', async () => {
+    const { User } = await import('../src/models/user.model.js');
+    const redis = (await import('../src/config/redis.js')).default;
+
+    User.find.mockResolvedValueOnce([{ _id: 'staff_1' }, { _id: 'staff_2' }]);
+    redis.get.mockResolvedValue('{"totalBookings": 10}');
+
+    await capturedWorkers['weekly-stats']({});
+
+    expect(User.find).toHaveBeenCalledWith({ role: 'staff' });
+    expect(redis.del).toHaveBeenCalledWith('weekly-stats:staff_1');
+    expect(redis.del).toHaveBeenCalledWith('weekly-stats:staff_2');
   });
 
   it('should exit cleanly if no staff members exist', async () => {
@@ -116,7 +112,7 @@ describe('Staff Stats Queue & Worker', () => {
 
     User.find.mockResolvedValueOnce([]);
 
-    await capturedWorkerProcessor({});
+    await capturedWorkers['staff-stats']({});
 
     expect(User.find).toHaveBeenCalledWith({ role: 'staff' });
     expect(redis.set).not.toHaveBeenCalled();
