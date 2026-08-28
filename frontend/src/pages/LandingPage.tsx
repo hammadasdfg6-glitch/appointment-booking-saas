@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Shield, CreditCard, Sparkles, CheckCircle2, ArrowRight, Clock, Star } from 'lucide-react';
+import { Calendar, Shield, CreditCard, Sparkles, CheckCircle2, ArrowRight, Clock, Star, PlayCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
+import { DemoModal } from '../components/DemoModal';
 
 export function LandingPage() {
   const { isAuthenticated, role } = useAuth();
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-canvas dark:bg-slate-950 flex flex-col text-slate-900 dark:text-slate-100">
@@ -29,14 +32,24 @@ export function LandingPage() {
               </Link>
             ) : (
               <div className="flex items-center gap-2 sm:gap-3">
-              <Link to="/login" className="inline-flex">
-                <Button variant="ghost" size="md">Log in</Button>
-              </Link>
-              <Link to="/get-started" className="inline-flex">
-                <Button variant="primary" size="md">Get Started</Button>
-              </Link>
-            </div>
-          )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setIsDemoOpen(true)}
+                  className="hidden xs:inline-flex border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-semibold"
+                  leftIcon={<Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                >
+                  Live Demo
+                </Button>
+                <Link to="/login" className="inline-flex">
+                  <Button variant="ghost" size="md">Log in</Button>
+                </Link>
+                <Link to="/get-started" className="inline-flex">
+                  <Button variant="primary" size="md">Get Started</Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -58,7 +71,17 @@ export function LandingPage() {
               AppointFlow gives salons, clinics, tutors, and consultants a complete appointment engine with real-time slot generation, multi-tenant staff management, and automated Stripe payments.
             </p>
 
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                onClick={() => setIsDemoOpen(true)}
+                className="w-full sm:w-auto border-amber-300 dark:border-amber-700 bg-amber-50/90 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/70 font-bold shadow-sm"
+                leftIcon={<PlayCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+              >
+                Try Live Demo (1-Click)
+              </Button>
               <Link to="/get-started?tab=owner" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto shadow-md" rightIcon={<ArrowRight className="w-4 h-4" />}>
                   Start your business
@@ -66,7 +89,7 @@ export function LandingPage() {
               </Link>
               <Link to="/get-started?tab=customer" className="w-full sm:w-auto">
                 <Button variant="secondary" size="lg" className="w-full sm:w-auto">
-                  I have an appointment to book
+                  Book appointment
                 </Button>
               </Link>
             </div>
@@ -179,6 +202,9 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* 1-Click Interactive Live Demo Modal */}
+      <DemoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
     </div>
   );
 }

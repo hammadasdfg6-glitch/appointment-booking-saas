@@ -17,6 +17,9 @@ import swaggerUi from "swagger-ui-express"
 import yamljs from "yamljs"
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { expressMiddleware } from '@apollo/server/express4';
+import { createApolloServer } from './graphql/apolloServer.js';
+import { buildGraphQLContext } from './graphql/context.js';
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -27,8 +30,33 @@ const app = express();
 
 app.set('trust proxy', 1)
 
-app.use(helmet())
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(cookieParser())
+
+// Initialize and mount Apollo GraphQL Server
+export const apolloServer = createApolloServer();
+await apolloServer.start();
+
+app.use(
+  '/graphql',
+  cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true,
+  }),
+  express.json(),
+  (req, res, next) => {
+    if (req.body === undefined) req.body = {};
+    next();
+  },
+  expressMiddleware(apolloServer, {
+    context: buildGraphQLContext,
+  })
+);
 
 
 

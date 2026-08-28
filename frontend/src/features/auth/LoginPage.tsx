@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { getErrorMessage } from '../../api/client';
+import { DemoModal } from '../../components/DemoModal';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -18,6 +19,7 @@ export function LoginPage() {
   const next = searchParams.get('next');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
 
   const {
     register,
@@ -139,8 +141,28 @@ export function LoginPage() {
               Sign in
             </Button>
           </form>
+
+          {/* Quick Demo Accounts */}
+          <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 text-center">
+            <div className="flex items-center gap-2 justify-center mb-3">
+              <span className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
+              <span className="text-caption font-medium uppercase tracking-wider text-slate-400">
+                Instant Testing
+              </span>
+              <span className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsDemoOpen(true)}
+              className="w-full py-2.5 px-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-xs"
+            >
+              <span>🚀 Launch 1-Click Demo Accounts</span>
+            </button>
+          </div>
         </Card>
       </div>
+
+      <DemoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
     </div>
   );
 }
