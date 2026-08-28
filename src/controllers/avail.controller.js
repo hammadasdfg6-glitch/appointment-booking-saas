@@ -195,12 +195,12 @@ export const getSlots = catchAsync(async (req, res, next) => {
 
   const { staffId, date } = req.query;
 
-  // HELPER: Checks Redis for any active holds (someone checking out) and removes them
+  // Checks Redis for any active holds and removes them
   const filterHolds = async (slotsArray) => {
     if (slotsArray.length === 0) return [];
     const holdKeys = slotsArray.map((slot) => `hold:${slot._id}`);
     const holds = await redis.mget(holdKeys);
-    // Keep the slot only if it has NO hold (is null)
+    // Keep the slot only if it has NO hold
     return slotsArray.filter((slot, idx) => holds[idx] === null);
   };
 
