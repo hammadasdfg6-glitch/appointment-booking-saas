@@ -41,3 +41,14 @@ export function useMonthlyStaffStats() {
   });
 }
 
+export function useRevenueStats(params?: { staffId?: string; serviceId?: string; date?: string }) {
+  const hasFilters = Boolean(params?.staffId || params?.serviceId || params?.date);
+  return useQuery({
+    queryKey: ['stats', 'revenue', params],
+    queryFn: () => statsApi.getRevenueStats(params),
+    staleTime: 30 * 1000,
+    enabled: hasFilters,
+  });
+}
+
+

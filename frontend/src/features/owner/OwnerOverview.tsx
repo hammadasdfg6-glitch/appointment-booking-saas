@@ -32,6 +32,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SkeletonCard, SkeletonTableRow } from '../../components/ui/Skeleton';
+import { RevenueExplorer } from './components/RevenueExplorer';
 import { formatCurrency, formatTime, formatDate } from '../../lib/utils';
 
 export function OwnerOverview() {
@@ -203,6 +204,9 @@ export function OwnerOverview() {
           </>
         )}
       </div>
+
+      {/* Dynamic Filtered Revenue Explorer Widget */}
+      <RevenueExplorer />
 
       {/* Revenue Trend Visual Area Chart */}
       <Card padding="md">

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { totalStats, getAdvancedStats, todayStaffStats, weeklyStaffStats, monthlyStaffStats } from '../src/controllers/stats.controller.js';
+import { totalStats, getAdvancedStats, todayStaffStats, weeklyStaffStats, monthlyStaffStats, revenueStats } from '../src/controllers/stats.controller.js';
 import { User } from '../src/models/user.model.js';
 import Availability from '../src/models/availability.model.js';
 import { Booking } from '../src/models/booking.model.js';
 import { Service } from '../src/models/service.model.js';
 import { Slots } from '../src/models/slots.model.js';
+import { Revenue } from '../src/models/revenue.model.js';
 import redis from '../src/config/redis.js';
 
 vi.mock('../src/utils/catchAsync.js', () => {
@@ -40,6 +41,12 @@ vi.mock('../src/models/service.model.js', () => ({
 
 vi.mock('../src/models/slots.model.js', () => ({
   Slots: { countDocuments: vi.fn() },
+}));
+
+vi.mock('../src/models/revenue.model.js', () => ({
+  Revenue: {
+    find: vi.fn(),
+  },
 }));
 
 vi.mock('../src/config/redis.js', () => ({
@@ -290,6 +297,94 @@ describe('Stats Controller', () => {
         })
       );
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe('revenueStats', () => {
+    it('should return error 400 when no query filters are provided', async () => {
+      req.query = {};
+
+      await revenueStats(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Must provide some filters',
+          statusCode: 400,
+        })
+      );
+    });
+
+    it('should return cached revenue if available in Redis', async () => {
+      req.query = { staffId: 'staff123' };
+      const expectedDbQuery = { staffId: 'staff123', orgId: 'org123', status: 'paid' };
+      const expectedKey = `revenue:org123:${JSON.stringify(expectedDbQuery)}`;
+
+      redis.get.mockResolvedValueOnce(JSON.stringify(450));
+
+      await revenueStats(req, res, next);
+
+      expect(redis.get).toHaveBeenCalledWith(expectedKey);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Got the Revenue',
+        success: true,
+        totalAmmount: 450,
+      });
+      expect(Revenue.find).not.toHaveBeenCalled();
+    });
+
+    it('should return 0 when no revenue records are found in database', async () => {
+      req.query = { date: '2026-08-28' };
+      redis.get.mockResolvedValueOnce(null);
+
+      const mockSelect = vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValueOnce([]),
+      });
+      Revenue.find.mockReturnValueOnce({ select: mockSelect });
+
+      await revenueStats(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'No Revenue Yet!',
+        success: true,
+        totalAmmount: 0,
+      });
+    });
+
+    it('should calculate and sum revenue accurately, cache in Redis, and return total', async () => {
+      req.query = { serviceId: 'serv1', staffId: 'staff1' };
+      const expectedDbQuery = {
+        serviceId: 'serv1',
+        staffId: 'staff1',
+        orgId: 'org123',
+        status: 'paid',
+      };
+      const expectedKey = `revenue:org123:${JSON.stringify(expectedDbQuery)}`;
+
+      redis.get.mockResolvedValueOnce(null);
+
+      const mockRevenueDocs = [
+        { amount: 50 },
+        { amount: 75.5 },
+        { amount: 24.5 },
+      ];
+
+      const mockSelect = vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValueOnce(mockRevenueDocs),
+      });
+      Revenue.find.mockReturnValueOnce({ select: mockSelect });
+
+      await revenueStats(req, res, next);
+
+      expect(Revenue.find).toHaveBeenCalledWith(expectedDbQuery);
+      expect(redis.set).toHaveBeenCalledWith(expectedKey, JSON.stringify(150), 'EX', 600);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Got the Revenue',
+        success: true,
+        totalAmmount: 150,
+      });
     });
   });
 });

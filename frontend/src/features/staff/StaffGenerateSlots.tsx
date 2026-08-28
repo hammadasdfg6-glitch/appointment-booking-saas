@@ -13,9 +13,8 @@ import { getErrorMessage } from '../../api/client';
 
 export function StaffGenerateSlots() {
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = useState<string>(
-    format(addDays(new Date(), 1), 'yyyy-MM-dd')
-  );
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [generatedSlots, setGeneratedSlots] = useState<SlotItem[]>([]);
 
   const generateSlotsMutation = useGenerateSlots();
@@ -74,14 +73,40 @@ export function StaffGenerateSlots() {
         />
         <Card.Body>
           <div className="space-y-4">
-            <Input
-              label="Select Date"
-              type="date"
-              min={format(new Date(), 'yyyy-MM-dd')}
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              leftAddon={<CalendarIcon className="w-4 h-4" />}
-            />
+            <div>
+              <Input
+                label="Select Date"
+                type="date"
+                min={todayStr}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                leftAddon={<CalendarIcon className="w-4 h-4" />}
+              />
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-slate-400">Quick presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(todayStr)}
+                  className="px-2 py-0.5 text-xs rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-950/60 text-slate-700 dark:text-slate-300 hover:text-brand-600 border border-slate-200 dark:border-slate-700 transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(format(addDays(new Date(), 1), 'yyyy-MM-dd'))}
+                  className="px-2 py-0.5 text-xs rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-950/60 text-slate-700 dark:text-slate-300 hover:text-brand-600 border border-slate-200 dark:border-slate-700 transition-colors"
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(format(addDays(new Date(), 3), 'yyyy-MM-dd'))}
+                  className="px-2 py-0.5 text-xs rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-950/60 text-slate-700 dark:text-slate-300 hover:text-brand-600 border border-slate-200 dark:border-slate-700 transition-colors"
+                >
+                  +3 Days
+                </button>
+              </div>
+            </div>
 
             <div className="pt-2">
               <Button

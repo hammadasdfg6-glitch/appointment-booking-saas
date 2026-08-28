@@ -1,5 +1,5 @@
 import express from "express";
-import { totalStats, getAdvancedStats, todayStaffStats, weeklyStaffStats, monthlyStaffStats } from "../controllers/stats.controller.js";
+import { totalStats, getAdvancedStats, todayStaffStats, weeklyStaffStats, monthlyStaffStats, revenueStats } from "../controllers/stats.controller.js";
 import { Authentication, authorize } from "../middlewares/authenticator.js";
 import { tenant } from "../middlewares/tenant.js";
 
@@ -10,5 +10,6 @@ statsRouter.get("/advanced", Authentication, authorize('owner'), tenant, getAdva
 statsRouter.get('/todayStats', Authentication, authorize('staff', 'owner'), tenant, todayStaffStats)
 statsRouter.get('/weeklyStats', Authentication, authorize('staff', 'owner'), tenant, weeklyStaffStats)
 statsRouter.get('/monthlyStats', Authentication, authorize('staff', 'owner'), tenant, monthlyStaffStats)
+statsRouter.get('/revenue',Authentication,authorize('owner'),tenant,revenueStats)
 
 export default statsRouter

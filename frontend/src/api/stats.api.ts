@@ -33,5 +33,15 @@ export const statsApi = {
     const { data } = await apiClient.get<MonthlyStaffStatsResponse>('/stats/monthlyStats');
     return data.monthlyStats;
   },
+
+  async getRevenueStats(params?: { staffId?: string; serviceId?: string; date?: string }): Promise<{
+    message: string;
+    success: boolean;
+    totalAmmount: number;
+  }> {
+    const { data } = await apiClient.get('/stats/revenue', { params });
+    return data;
+  },
 };
+
 

@@ -125,14 +125,17 @@ export const slotsGeneration = catchAsync(async (req, res, next) => {
     duration = 30;
   }
 
-  const dayOfWeek = new Date(date).getDay();
+  // Safe UTC date extraction to prevent timezone off-by-one shifts
+  const [year, month, day] = date.split('-').map(Number);
+  const dateObj = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = dateObj.getUTCDay();
 
   let avail = await Availability.findOne({
     staffId,
     dayOfWeek,
   });
 
-  if (!avail && dayOfWeek >= 1 && dayOfWeek <= 5) {
+  if (!avail) {
     const staffUser = await User.findById(staffId);
     if (staffUser) {
       avail = await Availability.create({
@@ -148,7 +151,7 @@ export const slotsGeneration = catchAsync(async (req, res, next) => {
   if (!avail) {
     return res.status(404).json({
       success: false,
-      message: "Not Availiable",
+      message: `No availability schedule found for staff ${staffId} on ${date}.`,
     });
   }
 

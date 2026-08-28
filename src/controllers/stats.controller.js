@@ -8,6 +8,7 @@ import { formatDateString } from "../utils/timeUtilis.js"
 import catchAsync from "../utils/catchAsync.js"
 import AppError from "../utils/appError.js"
 import redis from "../config/redis.js"
+import { Revenue } from "../models/revenue.model.js";
 
 export const totalStats = catchAsync(async (req,res,next) => {
     
@@ -253,6 +254,56 @@ export const monthlyStaffStats = catchAsync( async (req,res,next) => {
         message: `monthly Booking Data`,
         success: true,
         monthlyStats
+    })
+
+})
+
+
+export const revenueStats = catchAsync( async (req,res,next) => {
+    const {staffId, serviceId, date} = req.query
+    const dbquery = {}
+    if(serviceId) dbquery.serviceId = serviceId
+    if(staffId) dbquery.staffId = staffId
+    if(date) dbquery.date = date
+    
+    if(0 === Object.keys(dbquery).length){
+        return next(new AppError('Must provide some filters','Query Parameters are missing',400))
+    }
+
+    dbquery.orgId = req.orgId
+    dbquery.status = 'paid'
+    
+    const key = `revenue:${req.orgId}:${JSON.stringify(dbquery)}`
+    const cached = await redis.get(key)
+    if(cached){
+        return res.status(200).json({
+        message: 'Got the Revenue',
+        success: true,
+        totalAmmount: JSON.parse(cached)
+        })
+    }
+    
+
+    const revenue = await Revenue.find(dbquery).select('+amount -_id').lean()
+    if(0 === revenue.length){
+        return res.status(200).json({
+            message: 'No Revenue Yet!',
+            success: true,
+            totalAmmount: 0
+        })
+    }
+    const ammounts = revenue.map(item => Number(item.amount))
+
+    const totalAmmount = ammounts.reduce((acc,item) => {
+        return acc + item
+    }, 0)
+
+    await redis.set(key,JSON.stringify(totalAmmount),'EX', 600)
+
+    return res.status(200).json({
+        message: 'Got the Revenue',
+        success: true,
+        totalAmmount
     })
 
 })
