@@ -21,7 +21,7 @@ const cacheWorker = new Worker('cache-queue', async (job) => {
     if (0 === staffMembers.length) return
 
     const SLOT_INTERVAL = 15
-    const duration = 15 
+    const duration = 60 
 
     
     const today = new Date()
