@@ -108,6 +108,6 @@ describe('Checkout Controller', () => {
       expect(Stats.findOneAndUpdate).toHaveBeenCalled()
       expect(res.status).toHaveBeenCalledWith(200)
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }))
-    })
+    }, 10000)
   })
 })

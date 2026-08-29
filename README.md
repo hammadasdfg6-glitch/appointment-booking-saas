@@ -7,14 +7,15 @@
 [![TanStack Query](https://img.shields.io/badge/TanStack_Query-v5-FF4154?style=flat-square&logo=react-query)](https://tanstack.com/query/latest)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=nodedotjs)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-5.x-lightgrey?style=flat-square&logo=express)](https://expressjs.com/)
+[![GraphQL](https://img.shields.io/badge/GraphQL-Apollo_Server_4-E10098?style=flat-square&logo=graphql)](https://graphql.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb)](https://www.mongodb.com/)
 [![Redis](https://img.shields.io/badge/Redis-Cloud-DC382D?style=flat-square&logo=redis)](https://redis.io/)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Background_Jobs-red?style=flat-square)](https://bullmq.io/)
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout_%26_Webhooks-635BFF?style=flat-square&logo=stripe)](https://stripe.com/)
 [![Resend](https://img.shields.io/badge/Resend-HTTPS_Email_API-black?style=flat-square&logo=resend)](https://resend.com/)
-[![Vitest](https://img.shields.io/badge/Tests-62_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-69_Passing-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
 
-**AppointFlow** is an enterprise-ready, multi-tenant Appointment Scheduling & Booking SaaS platform. It combines high-concurrency slot reservations with atomic Redis locks, automated BullMQ asynchronous background workers, cryptographically verified Stripe checkout, and a responsive, high-performance React 18 + TypeScript SPA.
+**AppointFlow** is an enterprise-ready, multi-tenant Appointment Scheduling & Booking SaaS platform. It combines high-concurrency slot reservations with atomic Redis locks, automated BullMQ asynchronous background workers, cryptographically verified Stripe checkout, a flexible **GraphQL API** with embedded **Apollo Sandbox**, and a responsive, high-performance React 18 + TypeScript SPA with instant **1-Click Live Demo testing**.
 
 ---
 
@@ -25,11 +26,12 @@
 4. [Project Structure](#-project-structure)
 5. [Quick Start & Local Setup](#-quick-start--local-setup)
 6. [Environment Variables](#-environment-variables)
-7. [API Contract & Quirks Matrix](#-api-contract--quirks-matrix)
-8. [Background Queues & Workers](#-background-queues--workers)
-9. [Testing & Build Verification](#-testing--build-verification)
-10. [Production Deployment Guide](#-production-deployment-guide)
-11. [License](#-license)
+7. [API Contract & Quirks Matrix (REST & GraphQL)](#-api-contract--quirks-matrix)
+8. [GraphQL & Apollo Sandbox Guide](#-graphql--apollo-sandbox)
+9. [Background Queues & Workers](#-background-queues--workers)
+10. [Testing & Build Verification](#-testing--build-verification)
+11. [Production Deployment Guide](#-production-deployment-guide)
+12. [License](#-license)
 
 ---
 
@@ -40,39 +42,43 @@
 * **Slug Routing**: Public booking flows support direct slug-based and organization-scoped identifiers (`/book?org=<slug_or_id>`).
 * **Multi-Tier Plans**: Tiered subscription structures (`Free`, `Pro`, `Enterprise`) for tenant organizations.
 
-### 👥 2. Role-Based Access Control (RBAC)
-* **👑 Business Owner (Admin)**:
-  * Master performance analytics (bookings today, projected trends, revenue vs. prior period).
-  * Full CRUD management for service offerings, durations, and pricing.
-  * Team onboarding and staff credential provisioning.
-  * Master bookings ledger with status management and **CSV export**.
-  * 1-Click shareable public booking link generator with instant clipboard copy.
-* **👨‍💼 Staff Providers**:
-  * Dedicated schedule view with **"Today's Agenda"** priority card and 1-click status completion.
-  * Recurring weekly availability configuration (open hours per day of week).
-  * Dynamic date-range slot generator matrix.
-* **🙋 Customers**:
-  * 5-step progressive booking wizard.
-  * Complimentary ($0) direct confirmation or Stripe payment checkout.
-  * Personal booking history with active and past appointment tracking.
-  * 1-Click **"Add to Google Calendar"** and **Apple / Outlook `.ics` download**.
+### 🚀 2. 1-Click Interactive Live Demo
+* **Zero-Setup Testing**: Dedicated live demo launcher modal directly on Landing Page and Sign-in page.
+* **Instant Role Impersonation**:
+  * 👑 **Business Owner**: `demo.owner@appointflow.com` $\rightarrow$ Full enterprise control & master revenue analytics.
+  * 👨‍💼 **Staff Provider**: `demo.staff@appointflow.com` $\rightarrow$ Schedule view, 1-click status completion & slot generation.
+  * 🙋 **Customer / Client**: `demo.customer@appointflow.com` $\rightarrow$ 5-step booking wizard with Stripe checkout.
 
-### ⚡ 3. Concurrency Safety & Slot Reservation Locks
+### 💰 3. Revenue Intelligence & Filtered Analytics
+* **Dynamic Breakdown Explorer**: Granular real-time revenue analytics filterable by:
+  * 👨‍💼 **Staff Member** (Specific provider or all team members)
+  * 💼 **Service Category** (Specific offering or all services)
+  * 📅 **Calendar Date** (Today, specific dates, or date ranges)
+* **Deterministic Caching**: High-performance multi-tenant Redis hashing with 10-minute TTL.
+
+### 🔮 4. GraphQL API & Localhost Apollo Sandbox
+* **Apollo Server 4 Engine**: Mounted at `http://localhost:5052/graphql` on Express 5.
+* **Embedded Apollo Sandbox**: Interactive visual schema explorer, documentation browser, and query execution editor enabled exclusively for localhost / development.
+* **Nested Field Resolution**: Automatically resolves `Booking.customer`, `Booking.staff`, and `Booking.service` without manual joins.
+* Complete architectural guide available in [`docs/GRAPHQL_GUIDE.md`](./docs/GRAPHQL_GUIDE.md).
+
+### ⚡ 5. Concurrency Safety & Slot Reservation Locks
 * **Atomic Redis Hold Locks**: During checkout, an atomic 2-minute hold (`hold:<slotId>`) prevents double-bookings under concurrent client traffic.
 * **Live UI Hold Countdown**: Interactive countdown timer badge displays remaining hold time before releasing the lock back into the pool.
 * **Automatic Hold Release**: If the user cancels, abandons, or the checkout session expires, the lock is automatically lifted in Redis.
 
-### 💳 4. Stripe Checkout & Cryptographic Webhooks
+### 💳 6. Stripe Checkout & Cryptographic Webhooks
 * Seamless Stripe Hosted Checkout for credit cards, Apple Pay, and Google Pay.
 * Idempotent webhook verification using `stripe.webhooks.constructEvent` with `STRIPE_WEBHOOK_SECRET`.
 * Automatic booking state transition (`pending` $\rightarrow$ `confirmed`) and atomic revenue incrementing upon `checkout.session.completed`.
 
-### 📬 5. BullMQ Asynchronous Job Queues
+### 📬 7. BullMQ Asynchronous Job Queues
 * **Email Queue (`email-queue`)**: Asynchronous booking confirmation emails, cancellation notices, and delayed **24-hour appointment reminders**.
 * **Report Queue (`report-queue`)**: Weekly cron job computing weekly revenue and booking summaries for business owners.
 * **Cache Queue (`cache-queue`)**: Nightly cron job warming the upcoming 7-day slot availability cache.
+* **Staff Stats Queues (`staff-stats`, `weekly-stats`, `monthly-stats`)**: Automated rollover and calendar reset workers.
 
-### 🎨 6. Modern Frontend Ergonomics
+### 🎨 8. Modern Frontend Ergonomics
 * **Dark / Light Theme**: Contrast-tuned design tokens with smooth transitions.
 * **Form Accessibility**: Interactive password visibility toggles (`Eye` / `EyeOff`), focus rings, and inline validation with **React Hook Form + Zod**.
 * **Time-of-Day Slot Bucketing**: Slots automatically bucketed into 🌅 **Morning**, ☀️ **Afternoon**, and 🌙 **Evening** tabs.
@@ -88,10 +94,10 @@
 
 The architecture leverages a decoupled, multi-tier cloud infrastructure:
 1. **Client / Presentation Layer (Vercel)**: React 18 + Vite SPA serving role-based portals (Customer, Staff, Owner) and a 5-step guided booking wizard with an inline authentication gate.
-2. **API & Application Layer (Railway)**: Express 5.x REST API orchestrator handling JWT authentication, strict tenant isolation (`orgId`), and centralized error handling.
+2. **API & Application Layer (Railway)**: Express 5.x REST & Apollo GraphQL API orchestrator handling JWT authentication, strict tenant isolation (`orgId`), and centralized error handling.
 3. **Async Job Processing (BullMQ)**: Worker engine managing transactional email delivery (Resend HTTPS API) and automated weekly revenue/booking analytics cron jobs.
 4. **Data & Cache Layer**:
-   * **Redis Cloud**: Distributed lock manager ensuring atomic 2-minute slot reservations (`SET NX EX 120`), BullMQ queue states, and rate limiting counters.
+   * **Redis Cloud**: Distributed lock manager ensuring atomic 2-minute slot reservations (`SET NX EX 120`), BullMQ queue states, real-time analytics hashing, and rate limiting counters.
    * **MongoDB Atlas**: Multi-tenant document database with indexed schemas for organizations, users, services, bookings, availability, and revenue metrics.
 5. **External Cloud Services**: Stripe Hosted Checkout sessions with cryptographic webhook listeners and Resend for transactional email dispatch.
 
@@ -114,13 +120,14 @@ The architecture leverages a decoupled, multi-tier cloud infrastructure:
 | Layer | Technology |
 |---|---|
 | Runtime & Framework | Node.js 18+, Express 5.x |
+| GraphQL Engine | Apollo Server 4 (@apollo/server), GraphQL.js |
 | Database & ODM | MongoDB Atlas, Mongoose 8.x |
 | Cache & Concurrency | Redis Cloud, ioredis 5.x |
 | Background Queues | BullMQ 5.x |
 | Security & Auth | JSON Web Tokens (JWT), bcryptjs, Helmet, CORS, Joi |
 | Payments | Stripe Node SDK 17.x |
 | Mailer Transport | Resend (HTTPS API) with Nodemailer SMTP Fallback |
-| Testing | Vitest, Supertest (57 tests passing) |
+| Testing | Vitest, Supertest (69 tests passing across 8 suites) |
 
 ---
 
@@ -131,9 +138,14 @@ The architecture leverages a decoupled, multi-tier cloud infrastructure:
 ├── src/                               # Express Backend Source
 │   ├── config/                        # MongoDB, Redis, and BullMQ client connections
 │   ├── controllers/                   # Auth, Availability, Bookings, Checkout, Services, Stats
+│   ├── graphql/                       # Apollo Server 4 GraphQL Architecture
+│   │   ├── typeDefs.js                # GraphQL SDL schema definitions
+│   │   ├── resolvers.js               # Root query & nested field resolvers
+│   │   ├── context.js                 # JWT cookie/header authentication context builder
+│   │   └── apolloServer.js            # ApolloServer instance factory & Sandbox plugins
 │   ├── middlewares/                   # JWT Auth, RBAC, Tenant isolation, Rate limiters, Error handling
 │   ├── models/                        # Mongoose schemas (Org, User, Service, Booking, Revenue, Stats)
-│   ├── queues/                        # BullMQ queues & worker processors (Email, Cache, Report)
+│   ├── queues/                        # BullMQ queues & worker processors (Email, Cache, Report, Stats)
 │   ├── routes/                        # Express REST route definitions
 │   ├── services/                      # Nodemailer SMTP transport service
 │   ├── utils/                         # AppError, catchAsync, slot calculation algorithms
@@ -144,10 +156,11 @@ The architecture leverages a decoupled, multi-tier cloud infrastructure:
 ├── frontend/                          # Vite + React 18 Frontend
 │   ├── src/
 │   │   ├── api/                       # Axios API client instances & endpoints
-│   │   ├── components/                # Reusable UI primitives (Button, Card, Modal, Badge, etc.)
+│   │   ├── components/                # Reusable UI primitives (Button, Card, Modal, Badge, DemoModal, etc.)
 │   │   ├── contexts/                  # AuthContext and ThemeContext providers
 │   │   ├── features/                  # Role-based feature views (auth, owner, staff, customer, wizard)
-│   │   ├── hooks/                     # TanStack React Query custom hooks
+│   │   │   ├── owner/components/      # RevenueExplorer dynamic analytics widget
+│   │   ├── hooks/                     # TanStack React Query custom hooks (useStats, useSlots, useAuth)
 │   │   ├── lib/                       # Calendar (.ics/Google Cal) & CSV export utilities
 │   │   ├── pages/                     # Route entry pages (Landing, Login, GetStarted, Success, 404)
 │   │   ├── types/                     # TypeScript API & entity declarations
@@ -158,7 +171,9 @@ The architecture leverages a decoupled, multi-tier cloud infrastructure:
 │   ├── tsconfig.json                  # TypeScript compiler options & path aliases
 │   └── vite.config.ts                 # Vite server & build settings
 │
-├── tests/                             # Automated Vitest integration test suite
+├── docs/                              # Architecture Documentation & GraphQL Guides
+│   └── GRAPHQL_GUIDE.md               # Extensive GraphQL & Apollo Sandbox guide
+├── tests/                             # Automated Vitest integration test suite (8 test files)
 ├── server.js                          # Production server entry point
 ├── .env.example                       # Backend environment template
 ├── package.json                       # Backend scripts & dependencies
@@ -190,7 +205,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit your `.env` file (see [Environment Variables](#-environment-variables) below), then start the backend server:
+Edit your `.env` file, then start the backend server:
 
 ```bash
 # Start backend in development mode (with auto-reload)
@@ -199,7 +214,10 @@ npm run dev
 # Or start in production mode
 npm start
 ```
-The backend will launch at `http://localhost:5052` (Swagger docs at `http://localhost:5052/api-docs`).
+
+* **Backend API**: `http://localhost:5052`
+* **Swagger OpenAPI Docs**: `http://localhost:5052/api-docs`
+* **Apollo GraphQL Sandbox**: `http://localhost:5052/graphql`
 
 ---
 
@@ -265,16 +283,16 @@ VITE_API_URL=http://localhost:5052
 ### Authentication & Tenant Endpoints
 | Method | Endpoint | Access | Key Payload Notes |
 |---|---|---|---|
-| `POST` | `/auth/orgs` | Public | Body: `{ name, slug, timezone, ownerName, ownerEmail, password, plan }` *(Note: uses `password`)* |
-| `POST` | `/auth/login` | Public | Body: `{ email, passwordHash }` *(Note: uses `passwordHash`)* |
-| `POST` | `/auth/register` | Public | Body: `{ name, email, passwordHash, orgName }` *(Customer registration)* |
+| `POST` | `/auth/orgs` | Public | Body: `{ name, slug, timezone, ownerName, ownerEmail, password, plan }` |
+| `POST` | `/auth/login` | Public | Body: `{ email, passwordHash }` |
+| `POST` | `/auth/register` | Public | Body: `{ name, email, passwordHash, orgName }` |
 | `POST` | `/auth/orgs/:orgId/staff` | Owner | Body: `{ name, email, passwordHash, role: "staff" }` |
 | `POST` | `/auth/reset-password` | Public | Body: `{ email, password }` |
 | `GET` | `/auth/me` | Authenticated | Returns authenticated user profile |
-| `PATCH`| `/auth/me` | Authenticated | Body: `{ name, email }` *(Update profile information)* |
+| `PATCH`| `/auth/me` | Authenticated | Body: `{ name, email }` |
 | `GET` | `/auth/staff` | Authenticated | Returns staff members in tenant org |
-| `DELETE`|`/auth/staff/:staffId` | Owner | Removes staff member and disassociates availability |
-| `POST` | `/auth/logout` | Authenticated | Clears auth cookies and invalidates Redis session |
+| `DELETE`| `/auth/staff/:staffId` | Owner | Removes staff member and disassociates availability |
+| `POST` | `/auth/logout` | Authenticated | Clears auth cookies and invalidates session |
 
 ### Services Endpoints
 | Method | Endpoint | Access | Key Payload Notes |
@@ -282,17 +300,17 @@ VITE_API_URL=http://localhost:5052
 | `GET` | `/service` | Authenticated | Lists all services for tenant organization |
 | `POST` | `/service/create` | Owner | Body: `{ name, description, durationMinutes, price, active }` |
 | `PATCH`| `/service/:name` | Owner | Body: `{ name, description, durationMinutes, price, active }` |
-| `DELETE`|`/service/:name` | Owner | Deactivates service |
+| `DELETE`| `/service/:name` | Owner | Deactivates service |
 
 ### Availability & Slots
 | Method | Endpoint | Access | Key Payload Notes |
 |---|---|---|---|
-| `GET` | `/availiability/slots` | Authenticated | Query: `?staffId=&date=YYYY-MM-DD` *(Returns 404 on empty slots, handled gracefully)* |
+| `GET` | `/availiability/slots` | Authenticated | Query: `?staffId=&date=YYYY-MM-DD` |
 | `POST`| `/availiability/` | Staff/Owner | Body: `{ weeklySchedule: [{ dayOfWeek, isWorking, startTime, endTime, breakStart, breakEnd }] }` |
-| `POST`| `/availiability/generate-slots` | Staff/Owner | Body: `{ staffId, startDate, endDate, slotDuration }` |
+| `POST`| `/availiability/generate-slots` | Staff/Owner | Body: `{ staffId, date, duration }` *(Auto-provisions working hours for any calendar date)* |
 | `GET` | `/availiability/:staffId` | Authenticated | Retrieves availability rules for specified staff |
 | `PATCH`| `/availiability/:staffId` | Staff/Owner | Updates availability rules for specified staff |
-| `DELETE`|`/availiability/:staffId` | Staff/Owner | Deletes availability rules for specified staff |
+| `DELETE`| `/availiability/:staffId` | Staff/Owner | Deletes availability rules for specified staff |
 
 ### Checkout & Bookings
 | Method | Endpoint | Access | Key Payload Notes |
@@ -302,17 +320,67 @@ VITE_API_URL=http://localhost:5052
 | `POST` | `/checkout/webhook` | Stripe Public | Raw body + `stripe-signature` header *(Idempotent webhook listener)* |
 | `POST` | `/booking` | Customer/Owner | Body: `{ serviceId, staffId, startAt, date }` *(Direct confirmation for free services)* |
 | `GET`  | `/booking` | Authenticated | Query: `?page=1&limit=10&status=&date=&staffId=` |
-| `PATCH`| `/booking/:id/status` | Staff/Owner | Body: `{ status: "pending" \| "confirmed" \| "completed" \| "cancelled" }` *(Auto-updates live Redis stats)* |
-| `DELETE`|`/booking/:id` | Authenticated | Cancels appointment, updates Redis metrics, and releases slot lock |
+| `PATCH`| `/booking/:id/status` | Staff/Owner | Body: `{ status: "pending" \| "confirmed" \| "completed" \| "cancelled" }` |
+| `DELETE`| `/booking/:id` | Authenticated | Cancels appointment, updates Redis metrics, and releases slot lock |
 
 ### Analytics & Stats Endpoints
 | Method | Endpoint | Access | Key Payload Notes |
 |---|---|---|---|
 | `GET`  | `/stats` | Owner | Master organization metrics (revenue, total bookings, active services) |
 | `GET`  | `/stats/advanced` | Owner | Advanced monthly revenue & booking comparative analytics |
+| `GET`  | `/stats/revenue` | Owner | Filtered paid revenue breakdown. Query: `?staffId=&serviceId=&date=YYYY-MM-DD` |
 | `GET`  | `/stats/todayStats` | Staff/Owner | Today's live booking metrics (`total`, `completed`, `cancelled`, `pending`) |
 | `GET`  | `/stats/weeklyStats` | Staff/Owner | Current Calendar Week metrics (Sunday $\rightarrow$ Today) |
 | `GET`  | `/stats/monthlyStats`| Staff/Owner | Current Calendar Month metrics (1st of month $\rightarrow$ Today) |
+
+---
+
+## 🔮 GraphQL & Apollo Sandbox
+
+AppointFlow provides a full-featured GraphQL endpoint mounted at `http://localhost:5052/graphql`.
+
+### Sample Queries (Copy & Run in Apollo Sandbox):
+
+```graphql
+# 1. Organization & Service Catalog Discovery
+query GetStudioDirectory {
+  org(slug: "appointflow-demo") {
+    _id
+    name
+    slug
+    plan
+  }
+  services(orgId: "6a91241545540a60ac3776c6") {
+    _id
+    name
+    price
+    durationMinutes
+  }
+  staff(orgId: "6a91241545540a60ac3776c6") {
+    _id
+    name
+    email
+    role
+  }
+}
+
+# 2. Bookings Ledger with Nested Relational Resolvers
+query GetBookingsWithRelations {
+  bookings(orgId: "6a91241545540a60ac3776c6") {
+    _id
+    date
+    startAt
+    endAt
+    status
+    price
+    customer { name email }
+    staff { name email }
+    service { name price durationMinutes }
+  }
+}
+```
+
+For complete architectural specifications, see [`docs/GRAPHQL_GUIDE.md`](./docs/GRAPHQL_GUIDE.md).
 
 ---
 
@@ -342,7 +410,7 @@ BullMQ workers run concurrently with the Express server for reliable, fault-tole
 ## 🧪 Testing & Build Verification
 
 ### Backend Automated Test Suite
-Run the 62-test integration and unit test suite powered by [Vitest](https://vitest.dev/):
+Run the 69-test integration and unit test suite powered by [Vitest](https://vitest.dev/):
 
 ```bash
 npm test
@@ -351,14 +419,15 @@ npm test
 ```text
  ✓ tests/staffStatsQueue.test.js (5 tests)
  ✓ tests/bookings.controller.test.js (8 tests)
- ✓ tests/stats.controller.test.js (9 tests)
+ ✓ tests/stats.controller.test.js (13 tests)
  ✓ tests/auth.controller.test.js (16 tests)
  ✓ tests/avail.controller.test.js (12 tests)
  ✓ tests/checkout.controller.test.js (2 tests)
+ ✓ tests/graphql.test.js (3 tests)
  ✓ tests/service.controller.test.js (10 tests)
 
- Test Files  7 passed (7)
-      Tests  62 passed (62)
+ Test Files  8 passed (8)
+      Tests  69 passed (69)
 ```
 
 ### Frontend TypeScript & Production Build
@@ -371,11 +440,11 @@ npm run build
 
 ```text
 vite v5.4.21 building for production...
-✓ 2841 modules transformed.
+✓ 2843 modules transformed.
 dist/index.html                     0.96 kB │ gzip:   0.53 kB
-dist/assets/index-BIltSOni.css     39.74 kB │ gzip:   7.12 kB
-dist/assets/index-DHMGwmhn.js   1,031.64 kB │ gzip: 290.91 kB
-✓ built in 12.72s
+dist/assets/index-DFmrYIkW.css     49.20 kB │ gzip:   8.30 kB
+dist/assets/index-BxG0isxw.js   1,062.41 kB │ gzip: 296.71 kB
+✓ built in 11.86s
 ```
 
 ---
