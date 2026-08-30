@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const { Schema } = mongoose;
-
 const availSchema = new Schema({
     orgId: {
         type: mongoose.Schema.Types.ObjectId,
