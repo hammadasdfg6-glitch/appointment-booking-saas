@@ -429,3 +429,6 @@ export const setStatus = catchAsync(async (req, res, next) => {
     message: "Booking Updated Successfully!",
   });
 });
+
+
+let value = 0;
