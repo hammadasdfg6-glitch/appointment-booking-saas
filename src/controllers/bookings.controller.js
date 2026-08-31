@@ -149,7 +149,7 @@ if(date === (new Date().toISOString().split("T")[0])){
     "You have a new appointment scheduled!",
   );
 
-  // Calculate delay for 24-hour reminder
+  // Calculate delay for 24-hour reminde
   const bookingDateTime1 = new Date(`${date}T${slot.startTime}:00`);
   const reminderTime = bookingDateTime1.getTime() - 24 * 60 * 60 * 1000;
   const delay = reminderTime - Date.now();
