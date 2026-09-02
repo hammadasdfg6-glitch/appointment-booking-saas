@@ -124,4 +124,6 @@ dist
 # Windows
 Thumbs.db
 
-
+AppointFlow_Bug_Sheet.csv
+AppointFlow_Bug_Sheet.xlsx
+~$AppointFlow_Bug_Sheet.xlsx

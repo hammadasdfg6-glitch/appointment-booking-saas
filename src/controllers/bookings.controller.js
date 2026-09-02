@@ -264,7 +264,7 @@ export const deleteBooking = catchAsync(async (req, res, next) => {
     );
   }
 
-  const chkslot = await Slots.findOne({ staffId: booking.staffId });
+  const chkslot = await Slots.findOne({ staffId: booking.staffId, date: new Date(booking.date) });
 
   if (null === chkslot) {
     return next(new AppError("Slot not found", "Not found", 404));

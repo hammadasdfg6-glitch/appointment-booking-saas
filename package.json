@@ -22,7 +22,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "xlsx": "^0.18.5"
   },
   "type": "module",
   "scripts": {
