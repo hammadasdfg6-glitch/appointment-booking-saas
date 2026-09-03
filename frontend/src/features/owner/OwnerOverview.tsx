@@ -66,10 +66,10 @@ export function OwnerOverview() {
 
   // Chart data derived from real stats data
   const chartData = [
-    { name: 'Last Month', revenue: Math.max(0, (advancedStats?.today?.revenue || 0) * 0.8) },
-    { name: 'Last Week', revenue: Math.max(0, (advancedStats?.today?.revenue || 0) * 0.9) },
-    { name: 'This Week', revenue: Math.max(0, (advancedStats?.today?.revenue || 0) * 1.1) },
-    { name: 'Today', revenue: advancedStats?.today?.revenue || 0 },
+    { name: 'Last Month', revenue: advancedStats?.timeline?.lastMonthRevenue ?? 0 },
+    { name: 'Last Week', revenue: advancedStats?.timeline?.lastWeekRevenue ?? 0 },
+    { name: 'This Week', revenue: advancedStats?.timeline?.thisWeekRevenue ?? 0 },
+    { name: 'Today', revenue: advancedStats?.timeline?.todayRevenue ?? 0 },
   ];
 
   return (

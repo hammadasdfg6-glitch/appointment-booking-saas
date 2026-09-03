@@ -92,6 +92,12 @@ export interface AdvancedStats {
   tomorrow: {
     bookings: number;
   };
+  timeline: {
+    lastMonthRevenue: number,
+    lastWeekRevenue: number,
+    thisWeekRevenue: number,
+    todayRevenue: number
+  }
   comparisons: {
     bookingTodayVsTomorrow: string;
     revenueThisWeekVsLastWeek: string;

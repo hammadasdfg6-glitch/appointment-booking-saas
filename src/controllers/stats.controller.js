@@ -135,6 +135,12 @@ export const getAdvancedStats = catchAsync(async (req, res, next) => {
             tomorrow: {
                 bookings: bookingsTomorrow
             },
+            timeline: {
+                lastMonthRevenue: lastMonthRevenue || 0,
+                lastWeekRevenue: lastWeekRevenue || 0,
+                thisWeekRevenue: thisWeekRevenue || 0,
+                todayRevenue: todayStats ? (todayStats.totalRevenue || 0) : 0
+            },
             comparisons: {
                 bookingTodayVsTomorrow: bookingPercentageChange.toFixed(2),
                 revenueThisWeekVsLastWeek: weeklyRevenueChange.toFixed(2),
