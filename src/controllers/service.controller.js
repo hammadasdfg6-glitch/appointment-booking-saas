@@ -23,6 +23,7 @@ export const addService = catchAsync(async (req, res, next) => {
 });
 
 export const dispServices = catchAsync(async (req, res, next) => {
+  // Implemented Pagination
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
